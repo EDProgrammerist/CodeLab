@@ -1,0 +1,88 @@
+name: codelab
+
+x-php: &php
+  image: codelab-php:local
+  build:
+    context: .
+    dockerfile: Dockerfile
+  working_dir: /var/www/html
+  volumes:
+    - ../../backend:/var/www/html
+    - php-vendor:/var/www/html/vendor
+  networks:
+    - application
+
+services:
+  app:
+    <<: *php
+    ports:
+      - "127.0.0.1:8010:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    <<: *php
+    command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--timeout=180"]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  scheduler:
+    <<: *php
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4@sha256:24989179f58856db763f418010c1169fecc944e3ec1ea7e921572d83eb070f70
+    environment:
+      MYSQL_DATABASE: codelab
+      MYSQL_USER: codelab
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the local root .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in the local root .env}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u codelab -D codelab -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:8.2@sha256:47670742d7924adbcdb404d1288b6327815b23141969c0939b8e5d61f78c2634
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - application
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  mailpit:
+    image: axllent/mailpit@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
+    ports:
+      - "127.0.0.1:8025:8025"
+    networks:
+      - application
+
+networks:
+  application:
+
+volumes:
+  php-vendor:
+  mysql-data:
+  redis-data:
