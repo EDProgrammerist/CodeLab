@@ -1,5 +1,7 @@
 # Non-functional Requirements
 
+> **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
+
 Status: proposed quality targets, not measured capabilities. The confirmed first release is a local demonstration with synthetic data. Measure and record its actual hardware/workload; the 200-account/50-concurrent-user baseline below is a future pilot objective, not a guarantee or mandatory local-demo capacity. Production hosting and institutional requirements are intentionally deferred to a later approved deployment plan under D11/D12.
 
 | ID | Area | MVP target and verification |
@@ -22,7 +24,7 @@ Status: proposed quality targets, not measured capabilities. The confirmed first
 
 ## Execution budgets and overload
 
-The local-demo acceptance workload is 10 synthetic accounts and 5 concurrent browser sessions, with one active runner evaluation (compilation and tests consume that single slot). Start with at most 10 waiting evaluations, grading preferred over practice. Apply the API response targets at this declared local workload; report execution latency using simple known-answer Java fixtures. The larger pilot figures in NFR03/NFR05 are future objectives. A worst-case bounded program may still use the full evaluation budget; no universal sub-30-second promise is made.
+The revised local-demo workload uses ten synthetic student accounts and five concurrent browser sessions, with code admissions instead of runner evaluations. Read p95 remains below 500ms and admission below 1s. The short measured sample and its limits are recorded in phase-6-7-acceptance.md. Runner latency targets are deferred; the larger pilot workload is a future objective.
 
 Provisional Java per-test budgets: 2 CPU seconds, 5 wall seconds including JVM startup, 512 MiB total memory, 64 processes/threads, 32 MiB temporary disk, 64 KiB stdout and 64 KiB stderr. Compilation has a separate proposed cap of 10 CPU seconds, 30 wall seconds, 512 MiB total memory, 64 processes/threads, 32 MiB disk/artifacts and 64 KiB per diagnostic stream. Heap and native/JVM memory must fit the total cap; an OS process/thread limit must accommodate tested JVM operation while bounding abuse. Benchmark these limits before activation; they are not measured requirements of every Java program. Up to 20 tests means up to 100 seconds test wall time, plus 30 seconds compilation and bounded orchestration overhead; nominal whole-evaluation cap is 150 seconds. Thus a 30-second typical completion target is not a maximum deadline.
 
@@ -38,6 +40,6 @@ Proposed retention: Runs 24 hours, operational logs 30 days, academic records an
 
 ## Visual quality
 
-Use [DESIGN.md](../DESIGN.md) as the Phase 2 reference, with documented accessibility corrections where necessary. Reuse shadcn/ui primitives and Tailwind tokens, keep clear empty/loading/error/queued/graded/system-error states, and make deadline timezone and remaining attempts visible. Do not copy marketing-scale headings into the programming workspace. Phase 2 must inspect the installed taste skill; this planning phase does not generate visual or application code.
+Use [DESIGN.md](DESIGN.md) as the Phase 2 reference, with documented accessibility corrections where necessary. Reuse shadcn/ui primitives and Tailwind tokens, keep clear empty/loading/error/queued/graded/system-error states, and make deadline timezone and remaining attempts visible. Do not copy marketing-scale headings into the programming workspace. Phase 2 must inspect the installed taste skill; this planning phase does not generate visual or application code.
 
 Usability, accessibility and consistent responsive layouts are explicit user requirements. Place shared primitives in components/ui/, feature UI in components/features/, and the app shell in components/common/ according to PROJECT_STRUCTURE.md. Design work and skill recommendations must preserve those boundaries; visual changes do not authorize architectural restructuring.

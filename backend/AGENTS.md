@@ -4,4 +4,4 @@ Laravel scaffold initialization and Boost guideline installation are complete. R
 
 Run PHP and Composer through the root infra/app/compose.yaml stack (PHP 8.4). Host PHP 8.2 is not compatible. See ../docs/local-development.md for commands.
 
-Follow the approved planning documents in ../docs. Phase 2.1 only initializes infrastructure and an API health route. Domain migrations, account flows and code execution require their later roadmap phases. Never execute student code in this application stack.
+Follow the approved planning documents in ../docs. Phases 3-4 implement authentication, classroom/enrollment/schedule workflows and activity authoring. Preserve classroom-first transaction locking and student-safe serializers. Isolated execution belongs to Phase 5. Never execute student code in this application stack.

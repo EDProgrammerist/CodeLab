@@ -1,6 +1,8 @@
 # System Architecture
 
-Status: proposed architecture for a local demonstration using synthetic data, with a later separately approved college deployment. No infrastructure or application has been initialized.
+> **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
+
+Status: local application infrastructure and Phases 1-4 are implemented. Phase 5 editor/history/feedback/report integration is implemented with simulated execution tests. The user deferred the separate Linux runner setup on 2026-10-14; real execution stays disabled. A later college deployment requires separate approval.
 
 ## Components and responsibilities
 
@@ -22,7 +24,7 @@ Future directory boundaries are `frontend/`, `backend/`, and minimal deployment/
 
 ## Required frontend architecture and proposed folder structure
 
-The frontend must follow the user-supplied [PROJECT_STRUCTURE.md](<C:/Users/ED/Desktop/Voting System/frontend/PROJECT_STRUCTURE.md>). The user explicitly adopted its architecture rules for CodeLab; its configuration snippets are reference examples, not instructions to initialize or modify the Voting System project. Its sample admin group does not introduce an administrator role into CodeLab.
+The frontend must follow the user-supplied [PROJECT_STRUCTURE.md](../frontend/PROJECT_STRUCTURE.md). The user explicitly adopted its architecture rules for CodeLab; its configuration snippets are reference examples, not instructions to initialize or modify the Voting System project. Its sample admin group does not introduce an administrator role into CodeLab.
 
 This replaces the earlier feature-colocated frontend proposal. The approved structure was initialized in Phase 2.1. Do not restructure the agreed directories without explicit approval. The backend layout below remains a separate proposal; frontend naming rules do not override Laravel conventions.
 

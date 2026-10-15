@@ -1,4 +1,4 @@
-name: Foundation checks
+name: CodeLab checks
 on: [push, pull_request]
 permissions:
   contents: read
@@ -17,6 +17,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
   backend:
     runs-on: ubuntu-latest
     defaults:

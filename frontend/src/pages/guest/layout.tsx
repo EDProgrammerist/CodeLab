@@ -1,5 +1,2 @@
-import { AppShell } from '@/components/common/app-shell'
-
-export default function GuestLayout() {
-  return <AppShell />
-}
+import { PublicShell } from '@/components/common/public-shell';
+export default function Layout() { return <PublicShell />; }

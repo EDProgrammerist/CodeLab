@@ -1,5 +1,2 @@
-import { FoundationSection } from '@/components/features/foundation/foundation-section'
-
-export default function HomePage() {
-  return <FoundationSection />
-}
+import { LandingSection } from '@/components/features/public/landing-section';
+export default function Page() { return <LandingSection />; }

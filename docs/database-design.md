@@ -1,10 +1,17 @@
 # Database Design
 
-Status: logical MySQL design only. No migrations, SQL, models or seeders are generated. Follow [functional requirements](functional-requirements.md) for business invariants.
+> **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
+
+### Compatibility during scope revision
+
+No destructive migration is applied. Existing submissions, feedback and academic records are preserved. New submissions use `state=submitted`, null score/results, and legacy non-null runtime/judge fields `not-executed`/`manual-review`. The application never calculates grades or exposes legacy scores. `max_points` is a retired compatibility column, set to zero for new activities and omitted from APIs/forms. Existing `test_cases` store optional public/private teaching examples; `test_suite_locked_at` protects examples after submission. A separately reviewed cleanup can remove retired schema fields later without discarding submitted source or feedback. Old grading jobs have a no-op compatibility handler and are no longer dispatched. Recovery only cleans expired legacy practice records.
+
+
+Status: the full logical MySQL design remains the target. Phases 3-4 implement users, session/recovery infrastructure, classrooms/memberships, weekly schedules, invitations, the Java catalog, activities, tests, allocations and audits. Execution/submission/report tables remain future migrations. Laravel users.password stores the conceptual password_hash. The initial role, semester and status columns use constrained database enums; changes to their accepted values require an additive migration. Other planned fields and invariants are introduced with their owning phase. Follow [functional requirements](functional-requirements.md) for business invariants.
 
 ## Conventions and relationships
 
-Use InnoDB, foreign keys, utf8mb4, explicit decimal scores and UTC microsecond timestamps. Internal IDs may be unsigned bigint; IDs are not authorization secrets. API represents IDs as strings to avoid JavaScript integer precision issues. Ordinary mutable records have created/updated timestamps. Store source and test payloads as UTF-8 text with byte-length validation. Avoid database enums that make policy evolution unnecessarily difficult: bounded strings plus application validation and supported CHECK constraints are sufficient.
+Use InnoDB, foreign keys, utf8mb4, explicit decimal scores and UTC microsecond timestamps. Internal IDs may be unsigned bigint; IDs are not authorization secrets. API represents IDs as strings to avoid JavaScript integer precision issues. Ordinary mutable records have created/updated timestamps. Store source and test payloads as UTF-8 text with byte-length validation. Prefer bounded strings plus validation/CHECK constraints for future evolving categories; the limited foundation enums are recorded above.
 
 Relationship map:
 
@@ -29,6 +36,7 @@ erDiagram
     users ||..o{ classrooms : owns
     users ||..o{ memberships : enrolls
     classrooms ||..o{ memberships : contains
+    classrooms ||..o{ schedules : schedules
     classrooms ||--o| invitations : issues
     classrooms ||..o{ activities : assigns
     languages ||..o{ activities : supports
@@ -65,6 +73,14 @@ erDiagram
         bigint classroom_id FK
         bigint student_id FK
         string status
+    }
+    schedules["classroom_schedules"] {
+        bigint id PK
+        bigint classroom_id FK
+        string class_session
+        int day_of_week
+        time starts_at
+        time ends_at
     }
     invitations["classroom_invitations"] {
         bigint classroom_id PK, FK
@@ -142,8 +158,9 @@ The student-to-classroom many-to-many relationship is resolved by classroom_memb
 | `users` | id; name; normalized email UNIQUE; password_hash; role (`student`, `instructor`); nullable student_number UNIQUE; email_verified_at; disabled_at; timestamps. Institution identity format is D12. Never accept role through public registration |
 | `classrooms` | id; instructor_id FK users; title; course_code; section_label; academic_year_start; academic_year_end; semester; term_end_date; timezone; status (`active`, `archived`); archived_at; timestamps. Validate end year = start year + 1 and term end is within the intended academic term |
 | `classroom_memberships` | id; classroom_id FK; student_id FK users; status (`active`, `removed`); joined_at; removed_at; timestamps. UNIQUE(classroom_id, student_id); joined_at preserved during reactivation |
+| `classroom_schedules` | id; classroom_id FK; class_session (oc/lab); day_of_week (1-7); starts_at/ends_at in classroom timezone. Up to 14 non-overlapping same-day slots, validated transactionally |
 | `classroom_invitations` | classroom_id PK/FK; code_digest UNIQUE; expires_at; revoked_at; created_at/updated_at. At most one current code per classroom; HMAC digest only, never recoverable plaintext |
-| `languages` | id; slug UNIQUE (e.g. `java` for the first pinned runtime); display_name; runtime_version; image_digest; judge_version; enabled; timestamps. Operationally maintained allowlist, not instructor CRUD. Referenced versions immutable; a later runtime release gets a distinct record/slug |
+| `languages` | id; slug UNIQUE (e.g. `java` for the first pinned runtime); display_name; runtime_version; image_digest; judge_version; enabled; timestamps. Operationally maintained allowlist, not instructor CRUD. Phase 4 seeds the Temurin Java 21 authoring catalog; image_digest/judge_version stay nullable until Phase 5 pins a verified execution image. Execution remains disabled. Referenced versions immutable; a later runtime release gets a distinct record/slug |
 | `activities` | id; classroom_id FK; language_id FK; title; instructions; grading_period; class_session; activity_type; max_points DECIMAL(7,2); submission_limit; deadline_at; status (`draft`, `published`, `archived`); published_at nullable; archived_at nullable; test_suite_locked_at nullable; assessment_digest nullable; timestamps |
 | `test_cases` | id; activity_id FK; position; visibility (`public`, `hidden`); stdin; expected_stdout; explanation nullable; timestamps. UNIQUE(activity_id, position). All tests contribute equally. Explanation is public only when test is public |
 | `activity_allocations` | activity_id FK; membership_id FK; composite PK(activity_id, membership_id); status (`assigned`, `not_assigned`); reason (`published_to_member`, `open_on_join`, `closed_on_join`); decided_at. Immutable automatic allocation; reactivation uses the same open/closed rules for missing rows only. No manual editing API in MVP |
@@ -186,3 +203,10 @@ Derive best score, attempts used and progress states from assessed records using
 ## Retention and deletion
 
 Restrict deletion of referenced academic records. Draft deletion may explicitly remove its unreferenced tests in a transaction. Classroom archival and membership removal retain data. Expiring Runs may be purged as a unit after their retention period and only after execution has been terminated. Academic purges are coordinated operational jobs after approved retention, with referential order and backups accounted for; no blanket cascade deleting graded submissions on user removal.
+
+
+## Phase 5 schema implementation note
+
+Migration `2026_10_14_000210_create_assessment_tables.php` adds `submissions`, `practice_runs` and `submission_feedback`. Each execution record retains immutable source/hash, runtime identity, assessment digest, request hash/idempotency key, acceptance time, status and fenced execution generation/lease. Unique membership/idempotency keys prevent replay duplication; assessed attempt numbers are unique per activity/membership. Feedback is unique per submission and owned by an instructor.
+
+For this local implementation, bounded test verdicts and stdout/stderr are stored in a private `results` JSON column rather than a separate per-test result table. Practice snapshots also use private JSON. The API uses explicit serializers, never raw model serialization. Reports select only score/status/identity/timing columns and derive totals without loading source or test output. No separate mutable grade-total table is introduced. This compact physical representation preserves the planned relationships and privacy boundary.

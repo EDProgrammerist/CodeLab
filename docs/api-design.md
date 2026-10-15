@@ -1,6 +1,20 @@
 # REST API Design
 
-Status: proposed resources, not implemented endpoints. Base path `/api/v1` for application resources. Browser authentication endpoints use `/auth` and Sanctum's conventional CSRF path through the same origin. [Permissions](user-roles-permissions.md) apply to every route, including list/poll/export routes.
+> **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
+
+## Current submission and progress contract
+
+`POST /api/v1/classrooms/{classroom}/activities/{activity}/submissions` accepts `language_id` and `source_code` with UUID `Idempotency-Key`. Returns 201 for a new stored submission and 200 for a replay. No runner, queue or grading is involved. Score/state/results input is prohibited. Admission uses the existing classroom-first lock and deadline/limit rules.
+
+GET submission lists/details expose ID, attempt number, accepted time, submitted/reviewed state, authorized source (detail only), and feedback; they omit scores, verdicts, test results and compiler output. `PUT .../submissions/{submission}/feedback` accepts text `body` only; score input is prohibited.
+
+GET `/classrooms/{classroom}/results?grading_period=...` remains the compatibility URL for completion tracking. Rows contain activity state, attempts used, latest submission ID/time and closure; no earned/possible/percentage/score fields. Instructor rows are paginated and ownership scoped. `/results/export` has been removed and returns 404.
+
+All `/runs` endpoints remain unavailable (503 for authorized requests). Activity resources omit `max_points` and `grading_policy`, report execution unavailable, and permit submission independently of execution. Authoring rejects `max_points`; examples are optional. Existing `/test-cases` paths remain compatibility paths for optional examples, with existing owner-only mutation and public-example filtering.
+
+## Earlier design and implementation history
+
+Status: authentication, /me, dashboards, classrooms, invitations, enrollment, languages and activity/test authoring are implemented through Phase 4. Profile edits, authenticated password changes, execution, submissions and reports below remain proposals. Base path `/api/v1` for application resources. Browser authentication endpoints use `/auth` and Sanctum's conventional CSRF path through the same origin. [Permissions](user-roles-permissions.md) apply to every route, including list/poll/export routes.
 
 ## Common contract
 
@@ -31,7 +45,7 @@ Lists default to 25 items, maximum 100, with stable sorting and allowlisted filt
 | POST `/auth/email/verification-notification` | Authenticated, throttled resend |
 | GET `/auth/email/verify/{id}/{hash}` | Authenticated, signed expiring verification link; validate identity/signature |
 
-Sanctum does not itself supply all registration/recovery endpoints; Laravel authentication services or a compatible headless package will implement these in Phase 3. No application code exists yet.
+Sanctum does not itself supply registration/recovery endpoints. Phase 3 implements them using Laravel authentication services and password brokers. GET /api/v1/student/dashboard and /api/v1/instructor/dashboard return the safe current-account resource after independent verification/role checks; later dashboard aggregates remain future work.
 
 ## Account, classroom and membership resources
 
@@ -69,6 +83,8 @@ All paths below are relative to `/api/v1`.
 
 Student activity detail embeds public examples and exposes categories, instructions, approved language, max points, deadline, limit, allocation_status (assigned/not_assigned), attempts_used, remaining_attempts, server_time and can_submit with a reason. Not-assigned work is read-only even after a later deadline extension. `can_submit` is guidance; admission rechecks it. Do not expose hidden test objects, IDs, count, expected outputs, private explanations or runtime details. The visible grading-policy description explains equal points per test. Allocation is server-owned; there is no manual allocation mutation endpoint in MVP. Owner detail also includes test_suite_locked_at and can_edit_tests; the server rechecks that permission on each edit.
 
+Phase 4 additions: classroom POST/PATCH accepts a schedules array (class_session, day_of_week, starts_at/ends_at as HH:mm) to replace the timetable atomically. Activity POST/PATCH accepts an optional full tests array without IDs to replace editable tests atomically; individual test routes also work. All mutations lock the classroom first. Deadline/invitation dates require an explicit offset or Z. Lists currently use fixed 25-item pages. Student activity responses report execution_available=false and can_submit=false with an unavailable reason; Phase 5 now derives attempt-use counts from stored submissions. No fabricated scores or attempts are returned.
+
 ## Runs, submissions and feedback
 
 Use prefix `/classrooms/{classroom}/activities/{activity}` for each route below.
@@ -101,4 +117,15 @@ Runner transport is private and is not a browser REST resource. A server-side ad
 
 ## Required contract tests in implementation
 
-Verify mismatched nested IDs, student-submitted privileged fields, unauthorized filters/exports, hidden-field absence in every response/error, idempotent retry before/after deadline, same key/different body, race for final attempt, stale sessions, membership removal during polling, student failure versus system failure, and CSV formula injection. These are future acceptance checks, not tests already run.
+Verify mismatched nested IDs, student-submitted privileged fields, unauthorized filters/exports, hidden-field absence in every response/error, idempotent retry before/after deadline, same key/different body, race for final attempt, stale sessions, membership removal during polling, student failure versus system failure, and CSV formula injection. Phase 4 tests nested IDs, authoring bounds, ownership, hidden fields, allocations, CSRF and publication/join locking. Execution/idempotency, grading and CSV checks remain in their owning phases.
+
+
+## Phase 5 implemented application contract (runner deferred)
+
+Under `/api/v1/classrooms/{classroom}/activities/{activity}`, `POST /runs` and `POST /submissions` accept `source_code`, `language_id` and an `Idempotency-Key` UUID header. Runs additionally require mode `public` or `custom` and optional `custom_stdin`. An accepted record returns 202; an identical replay returns 200, including after closure. A reused key with changed content returns 409. With execution disabled, new admissions return 503 without consuming attempts. This is currently the normal local configuration.
+
+`GET /runs`, `GET /submissions`, and their `/{record}` detail routes provide authorized polling/history. Lists paginate at 25 records. Students see only their own records; instructors can review classroom assessed submissions but cannot read student practice runs. Expired practice details return 404. Student assessed results expose public-test details and aggregate score, never hidden test outputs/individual verdicts. A `system_error` has null score and releases attempt usage.
+
+`PUT /submissions/{submission}/feedback` accepts a non-empty `body` up to 5,000 characters and requires classroom ownership. Editing preserves creation time and does not alter grading. `GET /classrooms/{classroom}/results` requires `grading_period`, with optional `class_session` and `activity_type`; instructor rows paginate at 25 using `page`. Students receive only their own row. The export route supports `format=csv` (default) or `format=xlsx`, includes the full matching roster regardless of page, and requires ownership. XLSX stores values as literal strings to avoid formula interpretation. Both exports omit assessment source/tests/feedback.
+
+The frontend uses API permissions and remaining-attempt counts; Laravel remains authoritative. Tests cover mocked grading/admission and real database-backed report/feedback behavior. Runner-host provisioning and containment acceptance remain deferred.

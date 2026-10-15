@@ -1,10 +1,12 @@
 # CodeLab — Project Overview
 
+> **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
+
 Status: Phase 1 approved and complete on 2026-10-13. The project owner explicitly authorized Phase 2.1 initialization. Phase 1 documents remain the requirements baseline; implementation evidence is tracked in development-roadmap.md.
 
 ## Purpose and scope
 
-CodeLab is a programming laboratory for college instructors and students. Instructors manage private classrooms, publish programming exercises, inspect attempts, give feedback, and export results. Students join by invitation code, practice in an online editor, submit solutions, and track their work.
+CodeLab is a programming laboratory for college instructors and students. Instructors manage private classrooms, publish programming exercises, inspect submitted code and give feedback. Students join by invitation code, write in an online editor, submit source for instructor review, and track their work.
 
 The architecture is a separate React/TypeScript frontend and Laravel REST API, with MySQL as the authoritative store, Redis for asynchronous work, and a separately isolated execution service. The first release is a local demonstration using synthetic student data, confirmed by the project owner. A real college pilot requires a later approved deployment plan; this is not a general online judge or full learning management system.
 
@@ -26,9 +28,10 @@ This overview owns unresolved decisions. Functional requirements own shared busi
 
 ## MVP and future boundary
 
-**MVP:** two roles; student registration and account recovery; provisioned instructor accounts; private classroom/section management; invitations and enrollment; categorized activities with examples and public/hidden tests; one initial programming language; Monaco editor; asynchronous Run and Submit; deterministic automated scores; attempt history; text feedback; grading-period progress and CSV exports; essential audit records and operational monitoring.
+**MVP:** two roles; student registration and recovery; provisioned instructor accounts; private classrooms and enrollment; categorized activities with optional public/instructor-only examples; Java Monaco editor; immediate code submissions; submission history; instructor feedback; grading-period completion tracking; essential audit and operational safeguards. Scores stay in the instructor's external class record.
 
-**Future:** dual-role accounts, co-teachers, public classroom discovery, institutional administration UI, SSO/MFA, plagiarism detection, AI assistance, file uploads or multi-file projects, interactive/network programs, arbitrary dependencies, additional languages, scheduled publication, per-student extensions/exemptions, late penalties, manual grade overrides, rubric grading, regrading/version history, weighted final course grades, XLSX/PDF exports, LMS integration, notifications beyond account email, and real-time collaboration. These are not Phase 1 commitments.
+**Deferred:** safe Run Java, additional languages, multiple files, co-teachers, SSO and collaboration. Automated grading and CSV/Excel exports are removed from scope. Existing database compatibility fields do not imply those features remain available.
+
 
 ## Terms
 
@@ -57,7 +60,7 @@ Confirmed on 2026-10-12: D01 classroom structure; D02 instructor provisioning an
 | D07 | Calendar conventions? | APPROVED PROVISIONAL: academic year expressed by start/end year; First, Second and Summer terms; Asia/Manila timezone; OC = Online Class, LAB = Laboratory. Revisit when the user receives the complete schedule/terms; no actual term dates are invented | Phase 3 schema |
 | D08 | How private are hidden tests? | CONFIRMED: score only for hidden tests; public-test details visible; hidden inputs, outputs and individual verdicts remain private. Proposed safeguard: also suppress hidden timing/memory/explanations | Phase 4 serializer, Phase 5 runner |
 | D09 | What may change after publishing? | CONFIRMED: tests editable before the first accepted assessed submission, then locked; later corrections require a replacement activity. Proposed: other assessment fields freeze at publication; deadline extensions/attempt-limit increases remain allowed and audited | Phase 4 publication |
-| D10 | Reports versus official course grades? | CONFIRMED: CSV activity scores and raw period totals; no official weighted course-grade calculation. Provisional and missing results remain labeled | Phase 6 reporting |
+| D10 | Reports versus official course grades? | CONFIRMED: CSV activity scores and raw period totals; no official weighted course-grade calculation. Provisional and missing results remain labeled | Phase 5 reporting (expanded scope) |
 | D11 | Hosting, load, and runner choice? | CONFIRMED: local demo with synthetic data; real hosting is a later plan. ARCHITECT BASELINE: same-origin local proxy, project-specific Linux application containers, dedicated Linux runner VM using Docker/runsc (gVisor), one active evaluation. Local hardware inspected; actual isolation and capacity remain Phase 5 gates | Phase 2 environment, Phase 5 execution |
 | D12 | Retention and identity rules? | CONFIRMED: email login and optional unique student number. ARCHITECT BASELINE: synthetic data only, explicit demo cleanup, Runs 24h/logs 30d. Real academic retention requires institutional approval in the later deployment plan | Phase 3 identity, later live deployment |
 | D13 | Seven phase labels and reporting? | ARCHITECT BASELINE: seven phases in the roadmap. User requires a clear completion notice for every phase; track evidence and do not report an incomplete phase as complete | Each phase gate |
@@ -79,9 +82,9 @@ When the real schedule arrives, update the calendar decisions and any unstarted 
 
 ## Visual source and plan approval
 
-Frontend architecture is confirmed by the user's explicit instruction: follow [PROJECT_STRUCTURE.md](<C:/Users/ED/Desktop/Voting System/frontend/PROJECT_STRUCTURE.md>). Use @/ for cross-directory imports, kebab-case filenames, PascalCase components, composition-only pages, API calls in services/, feature UI in components/features/, and shared primitives in components/ui/. Follow the reference's dependency rules. Directory restructuring requires explicit approval. The [system architecture](system-architecture.md) records the full tree and conventions; this replaces the earlier frontend feature-colocation proposal without changing any application directories.
+Frontend architecture is confirmed by the user's explicit instruction: follow [PROJECT_STRUCTURE.md](../frontend/PROJECT_STRUCTURE.md). Use @/ for cross-directory imports, kebab-case filenames, PascalCase components, composition-only pages, API calls in services/, feature UI in components/features/, and shared primitives in components/ui/. Follow the reference's dependency rules. Directory restructuring requires explicit approval. The [system architecture](system-architecture.md) records the full tree and conventions; this replaces the earlier frontend feature-colocation proposal without changing any application directories.
 
-[DESIGN.md](../DESIGN.md) is the visual authority: warm off-white canvas, white surfaces, blue primary actions, restrained borders and flat colors. It is an existing Notion style reference, not a CodeLab screen specification. Phase 2 will apply the installed `design-taste-frontend` skill while respecting DESIGN.md and product needs. It must not introduce unrelated branding, marketing layouts, proprietary-font dependencies, or conflicting defaults. Use available font substitutes and validate contrast.
+[DESIGN.md](DESIGN.md) is the visual authority: warm off-white canvas, white surfaces, blue primary actions, restrained borders and flat colors. It is an existing Notion style reference, not a CodeLab screen specification. Phase 2 will apply the installed `design-taste-frontend` skill while respecting DESIGN.md and product needs. It must not introduce unrelated branding, marketing layouts, proprietary-font dependencies, or conflicting defaults. Use available font substitutes and validate contrast.
 
 The user's design requirements are confirmed: apply the installed taste skill when relevant, prioritize usability and accessibility, and maintain consistent responsive layouts. The skill does not authorize changes to the agreed architecture.
 

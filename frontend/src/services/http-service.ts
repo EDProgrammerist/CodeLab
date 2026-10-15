@@ -7,3 +7,12 @@ export const http = axios.create({
   withXSRFToken: true,
   headers: { Accept: 'application/json' },
 })
+
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && error.config?.url !== '/me')
+      window.dispatchEvent(new Event('codelab:session-expired'))
+    return Promise.reject(error)
+  },
+)

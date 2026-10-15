@@ -9,3 +9,9 @@ coverage/
 .DS_Store
 .phpunit.cache/
 .phpunit.result.cache
+test-results/
+playwright-report/
+__pycache__/
+
+# Inactive local artifacts from the removed deployment rehearsal.
+infra/production/

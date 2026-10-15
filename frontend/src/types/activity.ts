@@ -1,0 +1,35 @@
+export type TestCase = {
+  id?: string;
+  position: number;
+  visibility: "public" | "hidden";
+  stdin: string;
+  expected_stdout: string;
+  explanation: string | null;
+};
+export type Activity = {
+  id: string;
+  classroom_id: string;
+  language_id: string;
+  title: string;
+  instructions: string;
+  grading_period: "prelim" | "midterm" | "semi_final" | "final";
+  class_session: "oc" | "lab";
+  activity_type: "activity" | "assignment";
+  submission_limit: number;
+  deadline_at: string;
+  timezone: string;
+  status: "draft" | "published" | "archived";
+  published_at: string | null;
+  language: { id: string; display_name: string; runtime_version: string };
+  tests?: TestCase[];
+  public_examples?: Omit<TestCase, "visibility">[];
+  can_edit_tests?: boolean;
+  test_suite_locked_at?: string | null;
+  allocation_status?: "assigned" | "not_assigned";
+  execution_available: boolean;
+  attempts_used?: number;
+  remaining_attempts?: number;
+  can_run?: boolean;
+  can_submit?: boolean;
+  submission_unavailable_reason?: string | null;
+};

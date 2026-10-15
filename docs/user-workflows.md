@@ -1,5 +1,17 @@
 # User Workflows
 
+> **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
+
+## Current student-to-instructor workflow
+
+1. Instructor provisions their account, creates a private classroom and publishes an activity with instructions, optional examples, deadline and submission limit.
+2. Student registers/verifies email, joins with an invitation code, opens the activity and writes Java in Monaco or the plain editor.
+3. Student selects Submit code. The API validates membership, assignment, deadline, limit and request key, then stores the source without running it. A retry reuses the request key and does not create another attempt.
+4. Instructor opens Student submissions and feedback, selects the saved source, and adds comments/explanations. Any score is recorded in the instructor's external class record.
+5. Student reloads the submission to see feedback. Both roles see completion counts by grading period. Completed means received code, not a passing grade. Run Java remains disabled.
+
+## Earlier workflow design (grading and export flows retired)
+
 Status: proposed journeys. Rules and states are authoritative in [functional requirements](functional-requirements.md).
 
 ## 1. Account access

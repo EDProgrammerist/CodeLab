@@ -15,6 +15,9 @@ x-php: &php
 services:
   app:
     <<: *php
+    environment:
+      PHP_CLI_SERVER_WORKERS: 4
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]
     ports:
       - "127.0.0.1:8010:8000"
     depends_on:
@@ -30,7 +33,7 @@ services:
 
   worker:
     <<: *php
-    command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--timeout=180"]
+    command: ["php", "artisan", "queue:work", "redis", "--queue=assessments,practice,default", "--sleep=3", "--tries=3", "--timeout=180"]
     depends_on:
       app:
         condition: service_healthy
