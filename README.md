@@ -1,45 +1,64 @@
 # CodeLab
 
-CodeLab is a web-based programming laboratory for students and instructors. Instructors organize private classrooms and programming activities; students write Java code, submit it for review, and read instructor feedback.
+CodeLab is a web-based programming laboratory for college students and instructors. Instructors create private section classrooms, publish activities and assignments, review submitted Java code, and award points with feedback. Students enroll using a classroom code, write solutions in their browser, and track their work throughout the semester.
 
 ## Current features
 
-- Student registration, email verification, password recovery, and secure session-based sign-in.
-- Instructor accounts created through a protected operator command.
-- Private classrooms for each course, section, and term, with invitation-code enrollment.
-- Academic years, semesters, grading periods, and weekly OC/LAB schedules.
-- Activities and assignments with instructions, examples, deadlines, and submission limits.
-- Monaco Java editor with a plain-text alternative, saved submissions, and submission history.
-- Instructor comments and explanations, plus completed, pending, and missed activity tracking.
-- Responsive public pages, account forms, and student/instructor workspaces.
+### Students
+
+- Register with a required unique student number, name, email, and password.
+- Verify email, sign in securely, and reset a forgotten password.
+- Join classrooms using instructor-provided enrollment codes.
+- Open an Activity or Assignment directly into the code workspace.
+- Write single-file `Main.java` solutions using Monaco Editor or its plain-text alternative.
+- Submit updated code before the deadline without an attempt limit.
+- View submission history, instructor feedback, and manually awarded points.
+- Track completed, pending, and missed work by grading period.
+
+### Instructors
+
+- Use an account created through controlled instructor provisioning.
+- Create private classrooms using Section, Semester, and Academic Year.
+- Generate enrollment codes and manage enrolled students.
+- Create Activities and Assignments with distinct labels and custom titles.
+- Set instructions, maximum points, deadlines, grading periods, and OC/LAB activity labels.
+- Save drafts and publish them to enrolled students.
+- Review code from Submission tracking, provide feedback, and award points within the activity maximum.
+
+### Shared experience
+
+- First and Second semesters; Prelim, Midterm, Semi-Final, and Final grading periods.
+- Role-based dashboards, protected routes, and classroom-scoped authorization.
+- Cookie-based sessions, CSRF protection, rate limiting, and secure logout.
+- Responsive landing, About, Contact, Privacy Policy, and Terms of Use pages.
+- Original landing illustrations and accessible interface components.
+
+## Workflow
+
+1. The instructor creates a section classroom and shares its enrollment code.
+2. Students register, verify their email, and join the classroom.
+3. The instructor creates an Activity or Assignment, sets points and a deadline, and publishes it.
+4. Students open the work, write Java code, and submit their solutions.
+5. The instructor reviews submissions and saves feedback and points.
+6. Students read the review in their submission history. Progress shows the latest submission's points; a new submission remains unscored until reviewed.
+
+## Current scope
+
+CodeLab stores source code for **manual instructor review**. Real Java execution is deferred; submitted code is not executed by the application. Automated grading, CSV/Excel exports, weekly schedule controls, and submission attempt limits are not part of the current workflow.
+
+Points represent instructor assessments of individual submissions, not an automatically calculated official course grade. Public legal pages require review against the school's actual practices. Production backend hosting remains undecided.
 
 ## Technology
 
-React, TypeScript, Vite, Tailwind CSS, shadcn/ui primitives, React Router, TanStack Query, Axios, and Monaco power the frontend. Laravel provides the REST API, Sanctum cookie-based sessions, and authorization. Local services include MySQL, Redis, and Mailpit, managed with Docker Compose.
+| Area | Technologies |
+| --- | --- |
+| Frontend | React, TypeScript, Vite |
+| UI and styling | Tailwind CSS, shadcn/ui primitives, Radix UI, Lucide icons |
+| Routing and data | React Router, TanStack Query, Axios |
+| Code editor | Monaco Editor with a plain-text fallback |
+| Backend | PHP 8.4, Laravel REST API |
+| Authentication | Laravel Sanctum cookie-based sessions |
+| Database | MySQL |
+| Supporting services | Redis, Mailpit, Docker Compose |
+| Quality checks | ESLint, TypeScript, Playwright, axe-core, PHPUnit, Laravel Pint |
 
-
-### October 17 workflow update
-
-Activities open directly into the code workspace. Instructors set maximum points and review submitted code to award points in CodeLab. Resubmissions are allowed before the deadline without attempt limits; progress shows the latest submission's points. First and Second are the available semesters. Student number is required for new student registration. Java execution remains deferred and no automatic grading or exports are introduced.
-
-Apply the additive feedback-points migration without resetting data:
-`docker compose --env-file .env -f infra/app/compose.yaml exec -T app php artisan migrate --no-interaction`
-
-
-## Start locally
-
-Open Docker Desktop and wait for its engine to run. From the project root:
-
-```powershell
-.\infra\app\frontend.ps1 dev
-```
-
-This starts and checks the Laravel, MySQL, Redis and local mail services before launching Vite. Open the URL printed by Vite. Running `npm run dev` directly starts only the frontend and does not start Laravel.
-
-`ECONNREFUSED 127.0.0.1:8010` means the local API is stopped. Restart it without resetting any data:
-
-```powershell
-docker compose --env-file .env -f infra/app/compose.yaml up -d --wait
-```
-
-Services restart automatically after an unexpected stop while Docker is running. Explicitly stopped services stay stopped until started again. Docker Desktop must remain running for sign-in and database access.
