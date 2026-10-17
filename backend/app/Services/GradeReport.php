@@ -25,6 +25,7 @@ class GradeReport
             $pages = $request->user()->role === 'instructor' ? $membersQuery->paginate(25) : null;
             $members = $pages ? $pages->getCollection() : $membersQuery->get();
             $submissions = Submission::whereIn('activity_id', $activities->modelKeys())->whereIn('membership_id', $members->modelKeys())->select(['id', 'activity_id', 'membership_id', 'state', 'accepted_at'])->orderBy('accepted_at')->orderBy('id')->get()->groupBy(fn ($s) => $s->membership_id.':'.$s->activity_id);
+            $feedback = DB::table('submission_feedback')->whereIn('submission_id', $submissions->flatten()->pluck('id'))->get()->keyBy('submission_id');
             $allocations = DB::table('activity_allocations')->whereIn('activity_id', $activities->modelKeys())->get()->keyBy(fn ($a) => $a->membership_id.':'.$a->activity_id);
             $rows = [];
             foreach ($members as $member) {
@@ -37,15 +38,16 @@ class GradeReport
                     $latest = $received->last();
                     $closed = $classroom->status === 'archived' || $activity->status === 'archived' || now()->gt($activity->deadline_at);
                     $state = ! $assigned ? 'not_assigned' : ($latest ? 'completed' : ($closed ? 'missed' : 'pending'));
+                    $points = $latest && $assigned ? ($feedback[$latest->id]->points_awarded ?? null) : null;
                     $cells[] = ['activity_id' => (string) $activity->id, 'state' => $state,
                         'latest_submission_id' => $latest ? (string) $latest->id : null,
-                        'attempts_used' => $received->count(), 'closed' => $closed,
+                        'points_awarded' => $points === null ? null : number_format((float) $points, 2, '.', ''), 'closed' => $closed,
                         'last_submission_at' => $latest?->accepted_at->toISOString()];
                 }
                 $rows[] = ['membership_id' => (string) $member->id, 'name' => $member->student->name, 'email' => $member->student->email, 'membership_status' => $member->status, 'cells' => $cells];
             }
 
-            return ['classroom' => ['id' => (string) $classroom->id, 'title' => $classroom->title, 'timezone' => $classroom->timezone], 'generated_at' => now()->toISOString(), 'filters' => $filters, 'activities' => $activities->map(fn ($a) => ['id' => (string) $a->id, 'title' => $a->title, 'status' => $a->status])->all(), 'rows' => $rows, 'meta' => $pages ? ['current_page' => $pages->currentPage(), 'last_page' => $pages->lastPage(), 'total' => $pages->total()] : null];
+            return ['classroom' => ['id' => (string) $classroom->id, 'title' => $classroom->title, 'timezone' => $classroom->timezone], 'generated_at' => now()->toISOString(), 'filters' => $filters, 'activities' => $activities->map(fn ($a) => ['id' => (string) $a->id, 'title' => $a->title, 'max_points' => $a->max_points, 'status' => $a->status])->all(), 'rows' => $rows, 'meta' => $pages ? ['current_page' => $pages->currentPage(), 'last_page' => $pages->lastPage(), 'total' => $pages->total()] : null];
         });
     }
 }

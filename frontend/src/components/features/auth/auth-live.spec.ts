@@ -77,6 +77,7 @@ test('real student registration, mail verification, recovery, cookie revocation 
   await expect(page).toHaveURL(/\/login$/)
   await page.getByRole('link', { name: 'Register as a student' }).click()
   await page.getByLabel('Full name').fill('Browser Student')
+  await page.getByLabel('Student number').fill(`AUTH-${Date.now()}`)
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByLabel('Confirm password').fill(password)

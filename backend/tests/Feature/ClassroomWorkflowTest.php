@@ -19,6 +19,24 @@ class ClassroomWorkflowTest extends TestCase
         return ['title' => 'Programming 1', 'course_code' => 'CC101', 'section_label' => '1-A', 'academic_year_start' => 2026, 'academic_year_end' => 2027, 'semester' => 'First', 'term_end_date' => '2027-03-31', 'timezone' => 'Asia/Manila', 'schedules' => [['class_session' => 'oc', 'day_of_week' => 1, 'starts_at' => '09:00', 'ends_at' => '10:00'], ['class_session' => 'lab', 'day_of_week' => 2, 'starts_at' => '13:00', 'ends_at' => '16:00']]];
     }
 
+    public function test_section_semester_and_years_are_sufficient_to_create_a_classroom(): void
+    {
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $this->actingAs($instructor)->postJson('/api/v1/classrooms', [
+            'section_label' => 'BSIT 1-A', 'semester' => 'First',
+            'academic_year_start' => 2026, 'academic_year_end' => 2027,
+        ])->assertCreated()->assertJsonPath('data.title', 'BSIT 1-A')
+            ->assertJsonPath('data.timezone', 'Asia/Manila')->assertJsonPath('data.term_end_date', '2027-12-31');
+        $this->assertDatabaseHas('classrooms', ['instructor_id' => $instructor->id, 'section_label' => 'BSIT 1-A']);
+    }
+
+    public function test_summer_cannot_be_selected(): void
+    {
+        $class = Classroom::factory()->create();
+        $this->actingAs($class->instructor)->patchJson('/api/v1/classrooms/'.$class->id, ['semester' => 'Summer'])->assertUnprocessable()->assertJsonValidationErrors('semester');
+        $this->assertSame('First', $class->fresh()->semester);
+    }
+
     public function test_owner_creates_classroom_with_weekly_schedules_and_private_lists(): void
     {
         $owner = User::factory()->create(['role' => 'instructor']);

@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
-import { ClassroomForm } from "@/components/features/classrooms/classroom-form";
 import { useDomainAction } from "@/hooks/use-domain-action";
 import { readDomain, writeDomain } from "@/services/classroom-service";
 import type { Classroom, Membership, PageData } from "@/types/classroom";
@@ -11,8 +10,6 @@ export function ClassroomManagement({ classroom }: { classroom: Classroom }) {
   const [page, setPage] = useState(1)
   const [defaultExpiry] = useState(() => new Date(Date.now() + 7 * 86400000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16));
   const [code, setCode] = useState("");
-  const [edit, setEdit] = useState(false);
-  const [archive, setArchive] = useState(false);
   const action = useDomainAction();
   const path = `/classrooms/${classroom.id}`;
   const roster = useQuery({
@@ -29,24 +26,7 @@ export function ClassroomManagement({ classroom }: { classroom: Classroom }) {
   });
   const active = classroom.status === "active";
   return (
-    <section className="space-y-6 my-6" aria-label="Classroom management">
-      {active && (
-        <>
-          <Button
-            variant="outline"
-            onClick={() => setEdit(!edit)}
-            aria-expanded={edit}
-          >
-            Edit classroom
-          </Button>
-          {edit && (
-            <ClassroomForm
-              classroom={classroom}
-              onSaved={() => setEdit(false)}
-            />
-          )}
-        </>
-      )}
+    <section className="space-y-6 my-6" aria-label="Classroom enrollment">
       <div className="panel space-y-4">
         <h2>Enrollment invitation</h2>
         {invitation.isError && (
@@ -177,35 +157,6 @@ export function ClassroomManagement({ classroom }: { classroom: Classroom }) {
           </>
         )}
       </div>
-      {active && (
-        <div className="panel space-y-3">
-          <h2>Archive classroom</h2>
-          <p className="muted">
-            Archiving permanently closes enrollment and activity changes.
-            Records remain readable.
-          </p>
-          <label className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              checked={archive}
-              onChange={(e) => setArchive(e.target.checked)}
-            />
-            I understand this classroom cannot be reopened.
-          </label>
-          <Button
-            variant="outline"
-            disabled={!archive || action.busy}
-            onClick={() =>
-              void action.run(async () => {
-                await writeDomain(path, "patch", { status: "archived" });
-                setCode("");
-              }, "Classroom archived.")
-            }
-          >
-            Archive classroom
-          </Button>
-        </div>
-      )}
       {action.error && <p role="alert">{action.error}</p>}
       {action.message && <p role="status">{action.message}</p>}
     </section>

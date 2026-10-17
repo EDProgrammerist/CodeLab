@@ -51,7 +51,6 @@ class AssessmentWorkflow
             abort_unless(DB::table('activity_allocations')->where('activity_id', $activity->id)->where('membership_id', $member->id)->where('status', 'assigned')->exists(), 409, 'This activity is not assigned to you.');
             abort_unless((string) $activity->language_id === (string) $data['language_id'] && $activity->language->enabled, 409, 'This activity language is unavailable.');
             $scope = Submission::where('activity_id', $activity->id)->where('membership_id', $member->id);
-            abort_if((clone $scope)->where('state', '!=', 'system_error')->count() >= $activity->submission_limit, 409, 'No submission attempts remain.');
             $activity->test_suite_locked_at ??= now();
             $activity->save();
             $record = Submission::create([
@@ -74,8 +73,8 @@ class AssessmentWorkflow
         $data = [
             'id' => (string) $record->id,
             'state' => $record->state === 'system_error' ? 'not_received' : ($feedback ? 'reviewed' : 'submitted'),
-            'attempt_number' => $record->attempt_number, 'accepted_at' => $record->accepted_at->toISOString(),
-            'feedback' => $feedback ? ['body' => $feedback->body, 'updated_at' => $feedback->updated_at] : null,
+            'max_points' => $record->activity->max_points, 'accepted_at' => $record->accepted_at->toISOString(),
+            'feedback' => $feedback ? ['points_awarded' => $feedback->points_awarded === null ? null : number_format((float) $feedback->points_awarded, 2, '.', ''), 'body' => $feedback->body, 'updated_at' => $feedback->updated_at] : null,
         ];
         if ($detail) {
             $data['source_code'] = $record->source_code;

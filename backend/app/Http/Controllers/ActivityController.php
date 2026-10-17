@@ -58,7 +58,7 @@ class ActivityController extends Controller
             $classroom = $this->classrooms->lock($classroom->id);
             $data = $this->workflow->validate($request, $classroom);
             abort_if(isset($data['status']), 422, 'Create a draft before publishing.');
-            $activity = $classroom->activities()->create([...$data, 'max_points' => 0]);
+            $activity = $classroom->activities()->create($data);
             $activity->refresh();
             if (isset($data['tests'])) {
                 $this->workflow->replaceTests($activity, $data['tests']);
@@ -77,11 +77,11 @@ class ActivityController extends Controller
             abort_if($activity->status === 'archived', 409, 'Archived work cannot be changed or reopened.');
             $data = $this->workflow->validate($request, $classroom, $activity);
             if ($activity->published_at) {
-                foreach (['title', 'instructions', 'grading_period', 'class_session', 'activity_type', 'language_id', 'max_points'] as $field) {
+                foreach (['title', 'instructions', 'grading_period', 'class_session', 'activity_type', 'language_id'] as $field) {
                     abort_if(isset($data[$field]) && (string) $data[$field] !== (string) $activity->$field, 409, 'Published activity content is fixed. Create a replacement activity.');
                 }
                 abort_if(isset($data['deadline_at']) && $data['deadline_at']->lt($activity->deadline_at), 409, 'A published deadline may only be extended.');
-                abort_if(isset($data['submission_limit']) && $data['submission_limit'] < $activity->submission_limit, 409, 'A published attempt limit may only increase.');
+                abort_if(isset($data['max_points']) && (float) $activity->max_points > 0 && (float) $data['max_points'] !== (float) $activity->max_points, 409, 'Published points are fixed.');
             }
             $activity->fill($data);
             $activity->save();
@@ -90,6 +90,7 @@ class ActivityController extends Controller
             }
             $publishing = ($data['status'] ?? null) === 'published' && ! $activity->published_at;
             if ($publishing) {
+                abort_unless((float) $activity->max_points > 0, 422, 'Set activity points before publishing.');
                 abort_unless($activity->deadline_at->gt(now()), 422, 'Publication requires a future deadline.');
                 $this->workflow->assertSuite($activity);
                 $activity->status = 'published';

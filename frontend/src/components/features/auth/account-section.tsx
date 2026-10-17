@@ -197,9 +197,10 @@ export function AccountSection({ mode }: { mode: Mode }) {
                   />
                 </label>
                 <label className="field-label">
-                  Student number (optional)
+                  Student number
                   <Input
                     maxLength={50}
+                    required
                     value={studentNumber}
                     onChange={(e) => setStudentNumber(e.target.value)}
                   />

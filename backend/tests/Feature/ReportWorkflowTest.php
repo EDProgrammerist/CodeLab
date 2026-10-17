@@ -41,10 +41,23 @@ class ReportWorkflowTest extends TestCase
         $other = User::factory()->create();
         $class->memberships()->create(['student_id' => $other->id, 'status' => 'active', 'joined_at' => now()]);
         $url = '/api/v1/classrooms/'.$class->id.'/results?grading_period=prelim';
-        $r = $this->getJson($url)->assertOk()->assertJsonCount(1, 'data.rows')->assertJsonPath('data.rows.0.cells.0.state', 'completed')->assertJsonPath('data.rows.0.cells.0.latest_submission_id', (string) $attempt->id)->assertJsonPath('data.rows.0.cells.1.state', 'not_assigned')->assertJsonMissingPath('data.rows.0.earned')->assertJsonMissingPath('data.rows.0.cells.0.score')->assertJsonMissingPath('data.activities.0.max_points');
+        $r = $this->getJson($url)->assertOk()->assertJsonCount(1, 'data.rows')->assertJsonPath('data.rows.0.cells.0.state', 'completed')->assertJsonPath('data.rows.0.cells.0.latest_submission_id', (string) $attempt->id)->assertJsonPath('data.rows.0.cells.1.state', 'not_assigned')->assertJsonMissingPath('data.rows.0.earned')->assertJsonMissingPath('data.rows.0.cells.0.score')->assertJsonPath('data.activities.0.max_points', '100.00');
         $this->assertStringNotContainsString('PRIVATE SOURCE', $r->getContent());
         $this->actingAs($other)->getJson($url)->assertJsonPath('data.rows.0.cells.0.state', 'not_assigned');
         $this->actingAs($class->instructor)->getJson($url)->assertJsonCount(2, 'data.rows');
+    }
+
+    public function test_progress_shows_latest_manual_points_and_not_legacy_grades(): void
+    {
+        [$class, $student, $member, $activity] = $this->fixture();
+        $first = $this->attempt($member, $activity, '99.00', 1);
+        $url = '/api/v1/classrooms/'.$class->id.'/results?grading_period=prelim';
+        $this->getJson($url)->assertJsonPath('data.rows.0.cells.0.points_awarded', null);
+        $feedbackUrl = '/api/v1/classrooms/'.$class->id.'/activities/'.$activity->id.'/submissions/'.$first->id.'/feedback';
+        $this->actingAs($class->instructor)->putJson($feedbackUrl, ['body' => 'Reviewed', 'points_awarded' => 75])->assertOk();
+        $this->actingAs($student)->getJson($url)->assertJsonPath('data.rows.0.cells.0.points_awarded', '75.00');
+        $this->attempt($member, $activity, '100.00', 2);
+        $this->getJson($url)->assertJsonPath('data.rows.0.cells.0.points_awarded', null);
     }
 
     public function test_feedback_persists_without_changing_grade_and_requires_owner(): void
@@ -84,7 +97,7 @@ class ReportWorkflowTest extends TestCase
         $attempt = $this->attempt($member, $activity, '0.00', 1);
         $attempt->update(['state' => 'system_error', 'score' => null]);
         $url = '/api/v1/classrooms/'.$class->id.'/results?grading_period=prelim';
-        $this->getJson($url)->assertJsonPath('data.rows.0.cells.0.state', 'missed')->assertJsonPath('data.rows.0.cells.0.attempts_used', 0);
+        $this->getJson($url)->assertJsonPath('data.rows.0.cells.0.state', 'missed')->assertJsonMissingPath('data.rows.0.cells.0.attempts_used');
         $activity->update(['deadline_at' => now()->addDay()]);
         $this->getJson($url)->assertJsonPath('data.rows.0.cells.0.state', 'pending');
         $activity->forceFill(['status' => 'archived'])->save();

@@ -31,10 +31,10 @@ class ClassroomWorkflow
     {
         $required = $classroom ? 'sometimes' : 'required';
         $data = $request->validate([
-            'title' => [$required, 'string', 'max:150'], 'course_code' => [$required, 'string', 'max:50'], 'section_label' => [$required, 'string', 'max:50'],
+            'title' => ['sometimes', 'string', 'max:150'], 'course_code' => ['sometimes', 'string', 'max:50'], 'section_label' => [$required, 'string', 'max:50'],
             'academic_year_start' => [$required, 'integer', 'between:2000,2100'], 'academic_year_end' => [$required, 'integer', 'between:2001,2101'],
-            'semester' => [$required, 'in:First,Second,Summer'], 'term_end_date' => [$required, 'date_format:Y-m-d'],
-            'timezone' => [$required, 'timezone'], 'status' => ['sometimes', 'in:archived'],
+            'semester' => [$required, 'in:First,Second'], 'term_end_date' => ['sometimes', 'date_format:Y-m-d'],
+            'timezone' => ['sometimes', 'timezone'], 'status' => ['sometimes', 'in:archived'],
             'instructor_id' => ['prohibited'], 'id' => ['prohibited'],
             'schedules' => ['sometimes', 'array', 'max:14'],
             'schedules.*' => ['array:class_session,day_of_week,starts_at,ends_at'],
@@ -43,6 +43,9 @@ class ClassroomWorkflow
         ]);
         $start = (int) ($data['academic_year_start'] ?? $classroom?->academic_year_start);
         $end = (int) ($data['academic_year_end'] ?? $classroom?->academic_year_end);
+        if (! $classroom) {
+            $data += ['title' => $data['section_label'], 'course_code' => '', 'term_end_date' => $end.'-12-31', 'timezone' => 'Asia/Manila'];
+        }
         $term = $data['term_end_date'] ?? $classroom?->term_end_date->format('Y-m-d');
         if ($end !== $start + 1 || $term < "$start-01-01" || $term > "$end-12-31") {
             throw ValidationException::withMessages(['academic_year_end' => 'Use consecutive academic years and a term end within those years.']);

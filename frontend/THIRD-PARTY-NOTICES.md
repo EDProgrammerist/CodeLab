@@ -122,3 +122,11 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
+
+
+# Devicon technology logos
+
+C, C#, Java, PHP, MySQL, React and Laravel logo assets are sourced from
+https://github.com/devicons/devicon under the MIT license. The full license
+is bundled in `public/devicon-license.txt`. Brand marks belong to their
+respective owners; their display identifies technologies, not endorsements.

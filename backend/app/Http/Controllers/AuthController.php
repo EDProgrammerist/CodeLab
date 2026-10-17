@@ -42,7 +42,7 @@ class AuthController extends Controller
         $this->normalizeEmail($request);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'max:254', 'unique:users,email'],
-            'password' => $this->passwordRules(), 'student_number' => ['nullable', 'string', 'max:50', 'unique:users,student_number'],
+            'password' => $this->passwordRules(), 'student_number' => ['required', 'string', 'max:50', 'unique:users,student_number'],
             'role' => ['prohibited'], 'email_verified_at' => ['prohibited'], 'disabled_at' => ['prohibited'], 'id' => ['prohibited'], 'instructor_id' => ['prohibited'],
         ]);
         $user = new User;

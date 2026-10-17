@@ -15,7 +15,7 @@ class ActivityWorkflowTest extends TestCase
 
     private function payload(): array
     {
-        return ['title' => 'Sum', 'instructions' => 'Read and add.', 'grading_period' => 'prelim', 'class_session' => 'lab', 'activity_type' => 'assignment', 'language_id' => (string) Language::firstOrFail()->id, 'submission_limit' => 5, 'deadline_at' => '2026-11-01T12:00:00+08:00', 'tests' => [['position' => 1, 'visibility' => 'public', 'stdin' => " 2 3\n", 'expected_stdout' => "5\n", 'explanation' => 'Example'], ['position' => 2, 'visibility' => 'hidden', 'stdin' => 'PRIVATE INPUT', 'expected_stdout' => 'PRIVATE OUTPUT', 'explanation' => 'SECRET EXPLANATION']]];
+        return ['title' => 'Sum', 'instructions' => 'Read and add.', 'grading_period' => 'prelim', 'class_session' => 'lab', 'activity_type' => 'assignment', 'language_id' => (string) Language::firstOrFail()->id, 'max_points' => 100, 'deadline_at' => '2026-11-01T12:00:00+08:00', 'tests' => [['position' => 1, 'visibility' => 'public', 'stdin' => " 2 3\n", 'expected_stdout' => "5\n", 'explanation' => 'Example'], ['position' => 2, 'visibility' => 'hidden', 'stdin' => 'PRIVATE INPUT', 'expected_stdout' => 'PRIVATE OUTPUT', 'explanation' => 'SECRET EXPLANATION']]];
     }
 
     public function test_publication_allocations_hidden_serialization_and_whitespace(): void
@@ -46,16 +46,16 @@ class ActivityWorkflowTest extends TestCase
         $class = Classroom::factory()->create();
         $base = '/api/v1/classrooms/'.$class->id.'/activities';
         $this->actingAs($class->instructor);
-        $this->postJson($base, [...$this->payload(), 'submission_limit' => 51])->assertUnprocessable()->assertJsonValidationErrors('submission_limit');
+        $this->postJson($base, [...$this->payload(), 'submission_limit' => 5])->assertUnprocessable()->assertJsonValidationErrors('submission_limit');
         $this->postJson($base, [...$this->payload(), 'deadline_at' => '2026-11-01T12:00:00'])->assertUnprocessable()->assertJsonValidationErrors('deadline_at');
         $id = $this->postJson($base, [...$this->payload(), 'tests' => []])->assertCreated()->json('data.id');
-        $this->patchJson($base.'/'.$id, ['status' => 'published'])->assertOk()->assertJsonMissingPath('data.max_points');
+        $this->patchJson($base.'/'.$id, ['status' => 'published'])->assertOk()->assertJsonPath('data.max_points', '100.00');
         $this->patchJson($base.'/'.$id, ['tests' => $this->payload()['tests'], 'status' => 'published'])->assertOk();
         $digest = Activity::findOrFail($id)->assessment_digest;
         $this->patchJson($base.'/'.$id, ['title' => 'Changed'])->assertConflict();
-        $this->patchJson($base.'/'.$id, ['submission_limit' => 4])->assertConflict();
+        $this->patchJson($base.'/'.$id, ['max_points' => 99])->assertConflict();
         $this->patchJson($base.'/'.$id, ['deadline_at' => '2026-10-31T00:00:00Z'])->assertConflict();
-        $this->patchJson($base.'/'.$id, ['submission_limit' => 6, 'deadline_at' => '2026-11-02T00:00:00Z'])->assertOk();
+        $this->patchJson($base.'/'.$id, ['deadline_at' => '2026-11-02T00:00:00Z'])->assertOk();
         $tests = $this->payload()['tests'];
         $tests[1]['expected_stdout'] = 'Corrected';
         $this->patchJson($base.'/'.$id, ['tests' => $tests])->assertOk();

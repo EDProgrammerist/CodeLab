@@ -11,7 +11,7 @@ export type Classroom = {
   section_label: string;
   academic_year_start: number;
   academic_year_end: number;
-  semester: "First" | "Second" | "Summer";
+  semester: "First" | "Second";
   term_end_date: string;
   timezone: string;
   status: "active" | "archived";

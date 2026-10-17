@@ -21,10 +21,11 @@ class ResultController extends Controller
     {
         return DB::transaction(function () use ($request, $classroom, $activity, $submission, $workflow) {
             $classroom = $workflow->lock($classroom->id);
-            $classroom->activities()->whereKey($activity)->firstOrFail();
-            $record = Submission::where('activity_id', $activity)->findOrFail($submission);
-            $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'score' => ['prohibited']]);
-            DB::table('submission_feedback')->upsert([['submission_id' => $record->id, 'instructor_id' => $request->user()->id, 'body' => $data['body'], 'created_at' => now(), 'updated_at' => now()]], ['submission_id'], ['instructor_id', 'body', 'updated_at']);
+            $activityRecord = $classroom->activities()->whereKey($activity)->lockForUpdate()->firstOrFail();
+            $record = Submission::where('activity_id', $activity)->lockForUpdate()->findOrFail($submission);
+            abort_if($record->state === 'system_error', 409, 'Only received submissions can be reviewed.');
+            $data = $request->validate(['body' => ['required', 'string', 'max:5000'], 'score' => ['prohibited'], 'points_awarded' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:'.$activityRecord->max_points]]);
+            DB::table('submission_feedback')->upsert([['submission_id' => $record->id, 'instructor_id' => $request->user()->id, 'body' => $data['body'], 'points_awarded' => $data['points_awarded'] ?? null, 'created_at' => now(), 'updated_at' => now()]], ['submission_id'], ['instructor_id', 'body', 'points_awarded', 'updated_at']);
             $workflow->audit($request, $classroom, 'feedback.updated', 'submission', $record->id);
 
             return response()->json(['message' => 'Feedback saved.']);

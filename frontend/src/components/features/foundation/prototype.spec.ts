@@ -31,7 +31,7 @@ const ACTIVITY = {
   class_session: "lab",
   activity_type: "assignment",
   max_points: "100.00",
-  submission_limit: 5,
+
   deadline_at: "2027-01-01T00:00:00Z",
   timezone: "Asia/Manila",
   status: "published",
@@ -63,8 +63,8 @@ const ACTIVITY = {
   ],
 };
 const META = { current_page: 1, last_page: 1, total: 1 };
-const EVALUATION = { id: '1', state: 'reviewed', attempt_number: 1, accepted_at: '2026-10-14T00:00:00Z', source_code: 'public class Main {}', student_name: 'Alex Rivera', feedback: { body: 'Explain your loop boundary.', updated_at: '2026-10-14T00:00:00Z' } };
-const REPORT = { classroom: CLASSROOM, generated_at: '2026-10-14T00:00:00Z', activities: [{ id: '1', title: ACTIVITY.title, max_points: '100.00', status: 'published' }], rows: [{ membership_id: '1', name: 'Alex Rivera', email: 'alex@example.test', membership_status: 'active', earned: '50.00', possible: '100.00', percentage: 50, provisional: true, cells: [{ activity_id: '1', state: 'completed', score: '50.00', best_submission_id: '1', attempts_used: 1, evaluation_failed: false, in_flight: false, closed: false, last_submission_at: '2026-10-14T00:00:00Z' }] }] };
+const EVALUATION = { id: '1', state: 'reviewed', max_points: '100.00', accepted_at: '2026-10-14T00:00:00Z', source_code: 'public class Main {}', student_name: 'Alex Rivera', feedback: { points_awarded: '80.00', body: 'Explain your loop boundary.', updated_at: '2026-10-14T00:00:00Z' } };
+const REPORT = { classroom: CLASSROOM, generated_at: '2026-10-14T00:00:00Z', activities: [{ id: '1', title: ACTIVITY.title, max_points: '100.00', status: 'published' }], rows: [{ membership_id: '1', name: 'Alex Rivera', email: 'alex@example.test', membership_status: 'active', earned: '50.00', possible: '100.00', percentage: 50, provisional: true, cells: [{ activity_id: '1', state: 'completed', score: '50.00', best_submission_id: '1', points_awarded: null, evaluation_failed: false, in_flight: false, closed: false, last_submission_at: '2026-10-14T00:00:00Z' }] }] };
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/v1/languages", (route) =>
     route.fulfill({ json: { data: [ACTIVITY.language] } }),
@@ -73,6 +73,8 @@ test.beforeEach(async ({ page }) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname.endsWith('/submissions')) return route.fulfill({ json: { data: [EVALUATION], meta: META } });
     if (pathname.endsWith('/submissions/1')) return route.fulfill({ json: { data: EVALUATION } });
+    if (pathname.endsWith('/memberships')) return route.fulfill({ json: { data: [], meta: META } });
+    if (pathname.endsWith('/invitation')) return route.fulfill({ json: { data: null } });
     if (pathname.endsWith('/results')) return route.fulfill({ json: { data: new URL(route.request().url()).searchParams.get('grading_period') === 'final' ? { ...REPORT, activities: [], rows: [] } : REPORT } });
     const data = /activities\/1$/.test(pathname)
       ? ACTIVITY
@@ -114,6 +116,7 @@ const ROUTES = [
   "/instructor/dashboard",
   "/student/classrooms",
   "/student/classrooms/1",
+  "/instructor/classrooms/1",
   "/student/activities/sum",
   "/student/classrooms/1/activities/1",
   "/instructor/classrooms/1/activities/new",
@@ -204,13 +207,18 @@ test('legacy simulated grading page is retired', async ({ page }) => {
 });
 test("instructor draft controls and live gradebook filters", async ({ page }) => {
   await page.goto("/instructor/classrooms/1/activities/new");
-  await page.getByRole("button", { name: "Add example" }).click();
-  await expect(page.getByRole("group", { name: "Example 3" })).toBeVisible();
+  await expect(page.getByText("Examples and instructor notes")).toHaveCount(0);
+  await expect(page.getByLabel("Work type")).toHaveValue("activity");
+  await page.goto("/instructor/classrooms/1/activities/new?type=assignment");
+  await expect(page.getByRole("heading", { name: "Create assignment", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Work type")).toHaveValue("assignment");
   await page.goto("/instructor/classrooms/1/activities/1");
   await expect(
     page.getByRole("heading", { name: "Published brief" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add example" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Add example" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Student submissions and feedback" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Publication and lifecycle" })).toHaveCount(0);
   await page.goto("/instructor/gradebook");
   await page.getByRole('combobox', { name: 'Classroom', exact: true }).selectOption('1');
   await expect(page.getByText('1 completed / 0 pending / 0 missed', { exact: true })).toBeVisible();
@@ -228,6 +236,7 @@ test('real activity editor stays usable with execution disabled and shows saved 
  await expect(page.getByRole('button', { name: 'Submit code' })).toBeEnabled();
  await page.getByRole('button', { name: 'View submission 1' }).click();
  await expect(page.getByText('Explain your loop boundary.')).toBeVisible();
+ await expect(page.getByText('Points: 80.00 / 100.00')).toBeVisible();
  await expect(page.getByRole('button', { name: 'Save feedback' })).toHaveCount(0);
  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
  const audit = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
@@ -237,14 +246,16 @@ test('real activity editor stays usable with execution disabled and shows saved 
 
 test('instructor saves feedback through API and views the report without exports', async ({ page }) => {
  await page.route('**/sanctum/csrf-cookie', route => route.fulfill({ status: 204 }));
- let body = '';
- await page.route('**/submissions/1/feedback', route => { body = route.request().postDataJSON().body; return route.fulfill({ json: { message: 'Feedback saved.' } }); });
- await page.goto('/instructor/classrooms/1/activities/1');
+ let body = ''; let points: number | null = null;
+ await page.route('**/submissions/1/feedback', route => { body = route.request().postDataJSON().body; points = route.request().postDataJSON().points_awarded; return route.fulfill({ json: { message: 'Feedback saved.' } }); });
+ await page.goto('/instructor/classrooms/1/activities/1?view=submissions');
  await page.getByRole('button', { name: 'View submission 1' }).click();
  await page.getByRole('textbox', { name: 'Comments and explanation' }).fill('Use a clearer variable name.');
+ await page.getByRole('spinbutton', { name: 'Points awarded' }).fill('85.5');
  await page.getByRole('button', { name: 'Save feedback' }).click();
  await expect(page.getByRole('status').filter({ hasText: 'Feedback saved.' })).toBeVisible();
  expect(body).toBe('Use a clearer variable name.');
+ expect(points).toBe(85.5);
  await page.goto('/instructor/gradebook');
  await page.getByRole('combobox', { name: 'Classroom', exact: true }).selectOption('1');
  await expect(page.getByRole('button', { name: /Download CSV|Download Excel/ })).toHaveCount(0);
@@ -256,7 +267,7 @@ test('instructor saves feedback through API and views the report without exports
 });
 
 test('submission retries retain the request key and receive immediate confirmation', async ({ page }) => {
- await page.route('**/api/v1/classrooms/1/activities/1', route => route.fulfill({ json: { data: { ...ACTIVITY, execution_available: false, can_run: false, can_submit: true, attempts_used: 0 } } }));
+ await page.route('**/api/v1/classrooms/1/activities/1', route => route.fulfill({ json: { data: { ...ACTIVITY, execution_available: false, can_run: false, can_submit: true } } }));
  await page.route('**/sanctum/csrf-cookie', route => route.fulfill({ status: 204 }));
  const keys: string[] = [];
  await page.route('**/api/v1/classrooms/1/activities/1/submissions', route => {
@@ -272,4 +283,57 @@ test('submission retries retain the request key and receive immediate confirmati
  await page.getByRole('button', { name: 'Submit code' }).click();
  await expect(page.getByText('Code submitted for instructor review.', { exact: true })).toBeVisible();
  expect(keys).toHaveLength(2); expect(keys[0]).toBeTruthy(); expect(keys[0]).toBe(keys[1]);
+});
+
+
+test('section classroom exposes enrollment and distinct work types without schedule controls', async ({ page }) => {
+ await page.goto('/instructor/classrooms/1');
+ await expect(page.getByRole('heading', { name: 'Enrollment invitation' })).toBeVisible();
+ await expect(page.getByRole('button', { name: 'Generate new code' })).toBeVisible();
+ await expect(page.getByRole('button', { name: 'Manage classroom' })).toHaveCount(0);
+ await expect(page.getByRole('heading', { name: 'Weekly schedule' })).toHaveCount(0);
+ await page.getByRole('link', { name: 'Create assignment', exact: true }).click();
+ await expect(page.getByLabel('Work type')).toHaveValue('assignment');
+ await expect(page.getByLabel('Title', { exact: true })).toBeEditable();
+ await expect(page.getByRole('button', { name: 'Add example' })).toHaveCount(0);
+ await page.goto('/instructor/classrooms');
+ await page.getByRole('button', { name: 'Create classroom', exact: true }).click();
+ await expect(page.getByLabel('Section', { exact: true })).toBeVisible();
+ await expect(page.getByLabel('Classroom title', { exact: true })).toHaveCount(0);
+ await expect(page.getByLabel('Course code', { exact: true })).toHaveCount(0);
+ await expect(page.getByLabel('Term end date', { exact: true })).toHaveCount(0);
+ await expect(page.getByLabel('Classroom timezone', { exact: true })).toHaveCount(0);
+ await expect(page.getByRole('button', { name: 'Add weekly slot' })).toHaveCount(0);
+});
+
+
+test('saved draft publishes through the simplified Publish section', async ({ page }) => {
+ let published = false;
+ await page.route('**/sanctum/csrf-cookie', route => route.fulfill({ status: 204 }));
+ await page.route('**/api/v1/classrooms/1/activities/1', route => {
+  if (route.request().method() === 'PATCH') {
+   expect(route.request().postDataJSON()).toEqual({ status: 'published' });
+   published = true;
+  }
+  return route.fulfill({ json: { data: { ...ACTIVITY, status: published ? 'published' : 'draft', published_at: published ? ACTIVITY.published_at : null } } });
+ });
+ await page.goto('/instructor/classrooms/1/activities/1');
+ await expect(page.getByRole('heading', { name: 'Publish', exact: true })).toBeVisible();
+ await expect(page.getByRole('heading', { name: 'Student submissions and feedback' })).toHaveCount(0);
+ await expect(page.getByRole('button', { name: 'Delete draft' })).toHaveCount(0);
+ await page.getByRole('button', { name: 'Publish', exact: true }).click();
+ await expect(page.getByRole('heading', { name: 'Published brief' })).toBeVisible();
+ expect(published).toBe(true);
+ await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
+});
+
+test('submission tracking links to review instead of authoring', async ({ page }) => {
+ await page.goto('/instructor/gradebook');
+ await page.getByRole('combobox', { name: 'Classroom', exact: true }).selectOption('1');
+ await page.getByRole('link', { name: ACTIVITY.title, exact: true }).click();
+ await expect(page).toHaveURL(/view=submissions/);
+ await expect(page.getByRole('heading', { name: 'Student submissions and feedback' })).toBeVisible();
+ await expect(page.getByRole('textbox', { name: 'Instructions', exact: true })).toHaveCount(0);
+ await page.getByRole('button', { name: 'View submission 1' }).click();
+ await expect(page.getByRole('spinbutton', { name: 'Points awarded' })).toBeVisible();
 });

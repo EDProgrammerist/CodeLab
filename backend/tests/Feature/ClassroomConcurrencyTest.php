@@ -126,7 +126,7 @@ class ClassroomConcurrencyTest extends TestCase
         $this->assertNotNull($activity->fresh()->test_suite_locked_at);
     }
 
-    public function test_competing_final_submission_cannot_exceed_attempt_limit(): void
+    public function test_competing_submissions_are_both_saved_without_attempt_limits(): void
     {
         $this->assertSubmissionContention(false);
     }
@@ -151,9 +151,9 @@ class ClassroomConcurrencyTest extends TestCase
             app(AssessmentWorkflow::class)->admit($request, $classroom, (string) $activity->id, 'submissions');
         };
         $result = $this->contend($classroom, fn () => $admit($childKey), fn () => $admit($parentKey));
-        $this->assertSame($sameKey ? 200 : 409, $result['status']);
+        $this->assertSame(200, $result['status']);
         $records = Submission::where('activity_id', $activity->id)->get();
-        $this->assertCount(1, $records);
+        $this->assertCount($sameKey ? 1 : 2, $records);
         $this->assertSame(1, $records->first()->attempt_number);
         $this->assertNull($records->first()->score);
     }

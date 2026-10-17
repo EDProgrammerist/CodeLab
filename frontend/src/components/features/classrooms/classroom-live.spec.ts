@@ -64,7 +64,7 @@ async function resetFromLink(page: Page, link: string, password: string) {
   await expect(page.getByRole("status")).toContainText("Password updated");
 }
 
-test("real classroom, schedule, invitation, assignment and mobile enrollment", async ({
+test("real classroom, invitation, assignment and mobile enrollment", async ({
   page,
   browser,
   request,
@@ -104,28 +104,19 @@ test("real classroom, schedule, invitation, assignment and mobile enrollment", a
   await page
     .getByRole("button", { name: "Create classroom", exact: true })
     .click();
-  await page.getByLabel("Classroom title").fill(`Programming ${stamp}`);
-  await page.getByLabel("Course code").fill("CC101");
-  await page.getByLabel("Section", { exact: true }).fill("1-A");
+  await page.getByLabel("Section", { exact: true }).fill(`Section ${stamp}`);
   const year = new Date().getFullYear();
   await page.getByLabel("Academic year start").fill(String(year));
   await page.getByLabel("Academic year end").fill(String(year + 1));
-  await page.getByLabel("Term end date").fill(`${year + 1}-06-30`);
-  await page.getByRole("button", { name: "Add weekly slot" }).click();
-  await page
-    .getByRole("group", { name: "Slot 1", exact: true })
-    .getByLabel("Session")
-    .selectOption("oc");
   await page
     .getByRole("button", { name: "Save classroom", exact: true })
     .click();
   await page
-    .getByRole("link", { name: `Programming ${stamp}`, exact: true })
+    .getByRole("link", { name: `Section ${stamp}`, exact: true })
     .click();
   const classUrl = page.url();
   const classroomId = classUrl.split("/").at(-1)!;
-  await expect(page.getByText("OC / Monday / 09:00-10:00")).toBeVisible();
-  await page.getByRole("button", { name: "Manage classroom" }).click();
+  await expect(page.getByRole("heading", { name: "Weekly schedule" })).toHaveCount(0);
   await page
     .getByLabel("Invitation expiry (your device time)")
     .fill(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
@@ -137,26 +128,10 @@ test("real classroom, schedule, invitation, assignment and mobile enrollment", a
   await page
     .getByRole("textbox", { name: "Instructions", exact: true })
     .fill("Read two integers and print their sum.");
-  await page.getByLabel("Activity type").selectOption("assignment");
+  await page.getByLabel("Work type").selectOption("assignment");
   await page
     .getByLabel("Deadline (your device time)")
     .fill(new Date(Date.now() + 172800000).toISOString().slice(0, 16));
-  await page
-    .getByRole("group", { name: "Example 1", exact: true })
-    .getByLabel("Standard input")
-    .fill("2 3");
-  await page
-    .getByRole("group", { name: "Example 1", exact: true })
-    .getByLabel("Expected output")
-    .fill("5");
-  await page
-    .getByRole("group", { name: "Example 2", exact: true })
-    .getByLabel("Standard input")
-    .fill("PRIVATE_BROWSER_INPUT");
-  await page
-    .getByRole("group", { name: "Example 2", exact: true })
-    .getByLabel("Expected output")
-    .fill("PRIVATE_BROWSER_OUTPUT");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(page).toHaveURL(
     new RegExp(`/classrooms/${classroomId}/activities/[0-9]+$`),
@@ -165,7 +140,7 @@ test("real classroom, schedule, invitation, assignment and mobile enrollment", a
   await expect(
     page.getByRole("textbox", { name: "Instructions", exact: true }),
   ).toHaveValue("Read two integers and print their sum.");
-  await page.getByRole("button", { name: "Publish saved draft" }).click();
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Published brief" }),
   ).toBeVisible();
@@ -199,6 +174,7 @@ test("real classroom, schedule, invitation, assignment and mobile enrollment", a
   const studentEmail = `classroom-student-${stamp}@example.test`;
   await student.goto("/register");
   await student.getByLabel("Full name").fill("Classroom Student");
+  await student.getByLabel("Student number").fill(`CLASS-${stamp}`);
   await student.getByLabel("Email", { exact: true }).fill(studentEmail);
   await student
     .getByLabel("Password", { exact: true })
@@ -251,7 +227,6 @@ test("real classroom, schedule, invitation, assignment and mobile enrollment", a
     fullPage: true,
   });
   await page.goto(classUrl);
-  await page.getByRole("button", { name: "Manage classroom" }).click();
   await expect(
     page.getByRole("heading", { name: "Classroom Student", exact: true }),
   ).toBeVisible();

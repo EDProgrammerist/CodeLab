@@ -15,7 +15,6 @@ export function ActivitySection({ role }: { role: Role }) {
   const [period, setPeriod] = useState("");
   const [session, setSession] = useState("");
   const [type, setType] = useState("");
-  const [manage, setManage] = useState(false);
   const path = `/classrooms/${classroomId}`;
   const classroom = useQuery({
     queryKey: ["domain", "classroom", classroomId],
@@ -49,57 +48,20 @@ export function ActivitySection({ role }: { role: Role }) {
         All classrooms
       </Link>
       <PageHeading
-        eyebrow={`${c.course_code} / ${c.section_label} / ${c.academic_year_start}-${c.academic_year_end} / ${c.semester}`}
+        eyebrow={`${c.course_code ? `${c.course_code} / ` : ""}${c.section_label} / ${c.academic_year_start}-${c.academic_year_end} / ${c.semester}`}
         title={c.title}
-        description={`${c.status === "archived" ? "Archived classroom. " : ""}Deadlines and weekly slots use ${c.timezone}.`}
+        description={`${c.status === "archived" ? "Archived classroom. " : ""}Deadlines use ${c.timezone}.`}
         action={
           role === "instructor" && c.status === "active" ? (
-            <Button asChild>
-              <Link to={`/instructor/classrooms/${c.id}/activities/new`}>
+            <div className="flex flex-wrap gap-3"><Button asChild>
+              <Link to={`/instructor/classrooms/${c.id}/activities/new?type=activity`}>
                 Create activity
               </Link>
-            </Button>
+            </Button><Button asChild variant="outline"><Link to={`/instructor/classrooms/${c.id}/activities/new?type=assignment`}>Create assignment</Link></Button></div>
           ) : undefined
         }
       />
-      <div className="panel mb-6">
-        <h2>Weekly schedule</h2>
-        {c.schedules.length ? (
-          <ul className="mt-3 space-y-2">
-            {c.schedules.map((s, i) => (
-              <li key={i}>
-                {s.class_session.toUpperCase()} /{" "}
-                {
-                  [
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                    "Sunday",
-                  ][s.day_of_week - 1]
-                }{" "}
-                / {s.starts_at.slice(0, 5)}-{s.ends_at.slice(0, 5)}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="muted mt-2">Schedule not set yet.</p>
-        )}
-      </div>
-      {role === "instructor" && (
-        <>
-          <Button
-            variant="outline"
-            onClick={() => setManage(!manage)}
-            aria-expanded={manage}
-          >
-            Manage classroom
-          </Button>
-          {manage && <ClassroomManagement classroom={c} />}
-        </>
-      )}
+      {role === "instructor" && <ClassroomManagement classroom={c} />}
       <div className="flex flex-wrap gap-4 my-6">
         <label className="field-label">
           Grading period
@@ -163,12 +125,15 @@ export function ActivitySection({ role }: { role: Role }) {
             {activities.data.data.length === 0 && (
               <p className="muted mt-4">No activities match these filters.</p>
             )}
-            {activities.data.data.map((a) => (
+            {(["activity", "assignment"] as const).filter(kind => !type || type === kind).map(kind => <div key={kind} className="mt-6">
+              <h3>{kind === "assignment" ? "Assignments" : "Activities"}</h3>
+              {!activities.data.data.some(a => a.activity_type === kind) && <p className="muted mt-2">No {kind === "assignment" ? "assignments" : "activities"} on this page.</p>}
+              {activities.data.data.filter(a => a.activity_type === kind).map((a) => (
               <article className="domain-activity-row" key={a.id}>
                 <div>
                   <p className="eyebrow">
-                    {a.grading_period.replace("_", "-")} /{" "}
-                    {a.class_session.toUpperCase()} / {a.activity_type}
+                    <span className="font-semibold">{a.activity_type === "assignment" ? "Assignment" : "Activity"}</span> / {a.grading_period.replace("_", "-")} /{" "}
+                    {a.class_session.toUpperCase()}
                   </p>
                   <h3 className="mt-2">
                     <Link
@@ -183,7 +148,7 @@ export function ActivitySection({ role }: { role: Role }) {
                     {new Date(a.deadline_at).toLocaleString(undefined, {
                       timeZone: c.timezone,
                     })}{" "}
-                    / {a.submission_limit} attempts
+                    / {a.max_points} points
                   </p>
                 </div>
                 <span className="text-sm">
@@ -192,7 +157,7 @@ export function ActivitySection({ role }: { role: Role }) {
                     : a.status}
                 </span>
               </article>
-            ))}
+            ))}</div>)}
           </section>
           <Pagination
             page={page}

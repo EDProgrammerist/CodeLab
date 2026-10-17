@@ -15,7 +15,7 @@ export type Activity = {
   grading_period: "prelim" | "midterm" | "semi_final" | "final";
   class_session: "oc" | "lab";
   activity_type: "activity" | "assignment";
-  submission_limit: number;
+  max_points: string;
   deadline_at: string;
   timezone: string;
   status: "draft" | "published" | "archived";
@@ -27,8 +27,6 @@ export type Activity = {
   test_suite_locked_at?: string | null;
   allocation_status?: "assigned" | "not_assigned";
   execution_available: boolean;
-  attempts_used?: number;
-  remaining_attempts?: number;
   can_run?: boolean;
   can_submit?: boolean;
   submission_unavailable_reason?: string | null;

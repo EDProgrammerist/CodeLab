@@ -32,14 +32,14 @@ function ClassroomReport({ classroomId, role }: { classroomId: string; role: Rol
      <h2>{role === 'student' ? 'Your progress' : row.name}</h2>
      {role === 'instructor' && <p className="muted">{row.email} / enrollment: {row.membership_status}</p>}
      <p className="muted">{row.cells.filter(c => c.state === 'completed').length} completed / {row.cells.filter(c => c.state === 'pending').length} pending / {row.cells.filter(c => c.state === 'missed').length} missed</p>
-     <div className="table-scroll" role="region" tabIndex={0} aria-label={`Activity progress for ${row.name}`}><table><thead><tr><th>Activity</th><th>Status</th><th>Attempts used</th></tr></thead><tbody>{row.cells.map(cell => {
+     <div className="table-scroll" role="region" tabIndex={0} aria-label={`Activity progress for ${row.name}`}><table><thead><tr><th>Activity</th><th>Status</th><th>Points</th></tr></thead><tbody>{row.cells.map(cell => {
       const activity = report.activities.find(a => a.id === cell.activity_id)!;
-      return <tr key={cell.activity_id}><th scope="row"><Link className="text-link" to={`/${role}/classrooms/${classroomId}/activities/${cell.activity_id}`}>{activity.title}</Link></th><td>{cell.state.replaceAll('_',' ')}{cell.closed ? ' / closed' : ''}</td><td>{cell.attempts_used}</td></tr>;
+      return <tr key={cell.activity_id}><th scope="row"><Link className="text-link" to={`/${role}/classrooms/${classroomId}/activities/${cell.activity_id}${role === "instructor" ? "?view=submissions" : ""}`}>{activity.title}</Link></th><td>{cell.state.replaceAll('_',' ')}{cell.closed ? ' / closed' : ''}</td><td>{cell.state === 'not_assigned' ? 'Not assigned' : cell.points_awarded != null ? `${cell.points_awarded} / ${activity.max_points}` : 'Not yet scored'}</td></tr>;
      })}</tbody></table></div>
     </section>)}
    </>}
    {report.meta && <Pagination page={page} lastPage={report.meta.last_page} onChange={setPage} />}
-   <p className="muted">Completed means code has been submitted. Instructors review it and record scores separately in their class records.</p>
+   <p className="muted">Completed means code has been submitted. Points are awarded by the instructor. This view shows the latest submission; earlier reviews remain in submission history.</p>
   </>}
  </section>;
 }

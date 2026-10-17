@@ -1,5 +1,6 @@
 # Database Design
 
+> **17 October 2026 update:** The current [functional requirements](functional-requirements.md#october-17-workflow-revision) supersede older no-score/attempt/Summer rules below. Manual points are stored in `submission_feedback.points_awarded`; `max_points` is required for new activities. Feedback accepts nullable `points_awarded` bounded by the activity maximum. Submission lists use IDs, not attempt numbers; reports show latest-submission points. Student numbers are required for new registration. Only First/Second semesters are accepted. Historical database fields and records are preserved.
 > **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
 
 ### Compatibility during scope revision

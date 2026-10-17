@@ -86,7 +86,7 @@ export function WorkspaceShell({ role }: { role: Role }) {
         </div>
         <div className="demo-banner">
           <span className="demo-dot" />
-          Submit code for instructor review. Scores are recorded outside CodeLab; Run Java is deferred.
+          Submit code for instructor review. Points are awarded by instructors; Run Java is deferred.
         </div>
         <main
           id="main-content"

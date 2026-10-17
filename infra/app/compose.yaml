@@ -1,6 +1,7 @@
 name: codelab
 
 x-php: &php
+  restart: unless-stopped
   image: codelab-php:local
   build:
     context: .
@@ -46,6 +47,7 @@ services:
         condition: service_healthy
 
   mysql:
+    restart: unless-stopped
     image: mysql:8.4@sha256:24989179f58856db763f418010c1169fecc944e3ec1ea7e921572d83eb070f70
     environment:
       MYSQL_DATABASE: codelab
@@ -63,6 +65,7 @@ services:
       retries: 30
 
   redis:
+    restart: unless-stopped
     image: redis:8.2@sha256:47670742d7924adbcdb404d1288b6327815b23141969c0939b8e5d61f78c2634
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -76,6 +79,7 @@ services:
       retries: 15
 
   mailpit:
+    restart: unless-stopped
     image: axllent/mailpit@sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
     ports:
       - "127.0.0.1:8025:8025"

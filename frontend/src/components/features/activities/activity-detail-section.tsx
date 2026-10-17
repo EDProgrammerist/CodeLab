@@ -34,8 +34,9 @@ export function ActivityDetailSection() {
       <PageHeading
         eyebrow={`${a.grading_period.replace("_", "-")} / ${a.class_session.toUpperCase()} / ${a.activity_type}`}
         title={a.title}
-        description={`${a.language.display_name} / ${a.submission_limit} submission attempts`}
+        description={`${a.language.display_name} / ${a.max_points} points`}
       />
+      <AssessmentWorkspace key={a.id} activity={a} />
       <section className="panel space-y-4">
         <h2>Instructions</h2>
         <p className="whitespace-pre-wrap break-words">{a.instructions}</p>
@@ -75,7 +76,6 @@ export function ActivityDetailSection() {
           </div>
         ))}
       </section>
-      <AssessmentWorkspace key={a.id} activity={a} />
     </>
   );
 }

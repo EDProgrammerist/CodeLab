@@ -13,6 +13,7 @@ for (const width of [360, 768, 1366]) {
     }
     await page.goto('/');
     await page.screenshot({ path: `test-results/public-${width}.png`, fullPage: true, animations: 'disabled' });
+    await page.getByText('Before you begin', { exact: true }).click();
     await page.getByText('Can I submit code and run Java now?', { exact: true }).click();
     await expect(page.getByText(/You can write and submit Java code/)).toBeVisible();
     await page.getByRole('navigation', { name: 'Public navigation' }).getByRole('link', { name: 'Contact' }).click();

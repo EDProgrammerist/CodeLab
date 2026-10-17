@@ -99,7 +99,7 @@ export function ClassroomSection({ role }: { role: Role }) {
               {query.data.data.map((c) => (
                 <article className="classroom-card panel" key={c.id}>
                   <p className="eyebrow">
-                    {c.course_code} / {c.section_label}
+                    {c.course_code ? `${c.course_code} / ` : ""}{c.section_label}
                   </p>
                   <h2 className="mt-4 mb-3">
                     <Link

@@ -42,7 +42,13 @@ class AuthenticationTest extends TestCase
 
     private function registration(array $extra = []): array
     {
-        return array_merge(['name' => 'Test Student', 'email' => 'student@example.test', 'password' => 'Long-test-password-42', 'password_confirmation' => 'Long-test-password-42'], $extra);
+        return array_merge(['student_number' => 'S-100', 'name' => 'Test Student', 'email' => 'student@example.test', 'password' => 'Long-test-password-42', 'password_confirmation' => 'Long-test-password-42'], $extra);
+    }
+
+    public function test_student_number_is_required(): void
+    {
+        $this->postJson('/auth/register', $this->registration(['student_number' => null]))->assertUnprocessable()->assertJsonValidationErrors('student_number');
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_registration_creates_unverified_student_and_sends_mail(): void

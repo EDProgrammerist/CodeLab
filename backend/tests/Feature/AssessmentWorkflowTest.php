@@ -48,13 +48,13 @@ class AssessmentWorkflowTest extends TestCase
         $this->assertDatabaseHas('submissions', ['id' => $id, 'source_code' => "  public class Main {}\n", 'score' => null, 'state' => 'submitted', 'attempt_number' => 1]);
         $this->submit($base, $activity, $key)->assertOk()->assertJsonPath('data.id', $id);
         $this->submit($base, $activity, $key, ['source_code' => 'changed'])->assertConflict();
-        $this->submit($base, $activity)->assertCreated()->assertJsonPath('data.attempt_number', 2);
-        $this->submit($base, $activity)->assertConflict();
-        $this->assertDatabaseCount('submissions', 2);
+        $this->submit($base, $activity)->assertCreated()->assertJsonMissingPath('data.attempt_number');
+        $this->submit($base, $activity)->assertCreated();
+        $this->assertDatabaseCount('submissions', 3);
         $this->assertNotNull($activity->fresh()->test_suite_locked_at);
         Queue::assertNothingPushed();
         Http::assertNothingSent();
-        $this->getJson($base)->assertJsonPath('data.can_submit', false)->assertJsonPath('data.execution_available', false)->assertJsonMissingPath('data.max_points');
+        $this->getJson($base)->assertJsonPath('data.can_submit', true)->assertJsonPath('data.execution_available', false)->assertJsonPath('data.max_points', '100.00');
     }
 
     public function test_deadline_assignment_archival_membership_and_source_limits(): void
@@ -92,6 +92,25 @@ class AssessmentWorkflowTest extends TestCase
         $this->putJson($url.'/feedback', ['body' => 'Forged'])->assertNotFound();
         $otherClass = Classroom::factory()->create(['instructor_id' => $class->instructor_id]);
         $this->actingAs($class->instructor)->getJson('/api/v1/classrooms/'.$otherClass->id.'/activities/'.$activity->id.'/submissions/'.$id)->assertNotFound();
+    }
+
+    public function test_manual_points_are_bounded_private_and_can_be_zero_or_cleared(): void
+    {
+        [$class, $student, $member, $activity, $base] = $this->fixture();
+        $id = $this->submit($base, $activity)->assertCreated()->json('data.id');
+        $url = $base.'/submissions/'.$id;
+        $this->actingAs($class->instructor);
+        foreach ([-1, 101, 1.234] as $points) {
+            $this->putJson($url.'/feedback', ['body' => 'Review', 'points_awarded' => $points])->assertUnprocessable();
+        }
+        $this->putJson($url.'/feedback', ['body' => 'Review', 'points_awarded' => 80.5])->assertOk();
+        $this->actingAs($student)->getJson($url)->assertJsonPath('data.feedback.points_awarded', '80.50');
+        $this->putJson($url.'/feedback', ['body' => 'Forged', 'points_awarded' => 100])->assertNotFound();
+        $this->actingAs(User::factory()->create(['role' => 'instructor']))->putJson($url.'/feedback', ['body' => 'Forged', 'points_awarded' => 100])->assertNotFound();
+        $this->actingAs($class->instructor)->putJson($url.'/feedback', ['body' => 'Review', 'points_awarded' => 0])->assertOk();
+        $this->actingAs($student)->getJson($url)->assertJsonPath('data.feedback.points_awarded', '0.00');
+        $this->actingAs($class->instructor)->putJson($url.'/feedback', ['body' => 'Needs another look', 'points_awarded' => null])->assertOk();
+        $this->actingAs($student)->getJson($url)->assertJsonPath('data.feedback.points_awarded', null);
     }
 
     public function test_runs_remain_disabled_and_old_jobs_cannot_grade(): void

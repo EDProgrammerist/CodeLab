@@ -6,6 +6,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $frontendPath = Join-Path $projectRoot 'frontend'
+if ($Task -eq 'dev') {
+    Write-Host 'Starting CodeLab API, database, cache and local mail services...'
+    & docker compose --env-file (Join-Path $projectRoot '.env') -f (Join-Path $PSScriptRoot 'compose.yaml') up -d --wait --wait-timeout 90
+    if ($LASTEXITCODE -ne 0) {
+        throw 'CodeLab backend did not start. Open Docker Desktop, wait until its engine is running, then retry this command.'
+    }
+}
+
 $nodeVersion = (Get-Content -LiteralPath (Join-Path $frontendPath '.node-version') -Raw).Trim()
 $npmDirectory = Split-Path (Get-Command npm).Source
 $npmCli = Join-Path $npmDirectory 'node_modules/npm/bin/npm-cli.js'
