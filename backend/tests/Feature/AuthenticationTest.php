@@ -82,7 +82,7 @@ class AuthenticationTest extends TestCase
         $before = session()->getId();
         $response = $this->postJson('/auth/login', ['email' => strtoupper($user->email), 'password' => 'Long-test-password-42'])->assertOk();
         $this->assertNotSame($before, session()->getId());
-        $this->assertSame(['id', 'name', 'email', 'role', 'student_number', 'email_verified_at'], array_keys($response->json('data')));
+        $this->assertSame(['id', 'name', 'email', 'role', 'student_number', 'section', 'photo_url', 'email_verified_at'], array_keys($response->json('data')));
         $this->assertAuthenticatedAs($user);
     }
 

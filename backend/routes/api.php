@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\ClassroomController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ResultController;
 use App\Http\Resources\UserResource;
 use App\Models\Language;
@@ -13,9 +14,11 @@ Route::get('/v1/health', fn () => response()->json(['data' => ['name' => 'CodeLa
 Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function (): void {
     Route::get('/me', fn (Request $request) => new UserResource($request->user()));
     Route::middleware('verified')->group(function (): void {
+        Route::post('/profile', [ProfileController::class, 'update'])->middleware('throttle:30,1');
+        Route::get('/profile/photo', [ProfileController::class, 'photo']);
         Route::get('/student/dashboard', fn (Request $request) => new UserResource($request->user()))->middleware('can:student-dashboard');
         Route::get('/instructor/dashboard', fn (Request $request) => new UserResource($request->user()))->middleware('can:instructor-dashboard');
-        Route::apiResource('classrooms', ClassroomController::class)->except(['destroy']);
+        Route::apiResource('classrooms', ClassroomController::class);
         Route::post('/classroom-joins', [ClassroomController::class, 'join'])->middleware('throttle:classroom-joins');
         Route::get('/classrooms/{classroom}/invitation', [ClassroomController::class, 'invitation']);
         Route::put('/classrooms/{classroom}/invitation', [ClassroomController::class, 'rotate'])->middleware('throttle:30,1');

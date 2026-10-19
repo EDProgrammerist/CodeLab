@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, Link, useLocation, useNavigate } from "react-router";
-import { BookOpen, Code2, GraduationCap, Table2 } from "lucide-react";
+import { BookOpen, Code2, GraduationCap } from "lucide-react";
 import type { Role } from "@/types/user";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
@@ -41,12 +41,8 @@ export function WorkspaceShell({ role }: { role: Role }) {
               <GraduationCap size={18} />
               My progress
             </NavLink>
-          ) : (
-            <NavLink to="/instructor/gradebook">
-              <Table2 size={18} />
-              Submissions
-            </NavLink>
-          )}
+          ) : null}
+          <NavLink to={`/${role}/profile`}>Profile settings</NavLink>
         </nav>
         <div className="sidebar-note">
           <p className="font-medium">Room to learn.</p>
@@ -62,9 +58,9 @@ export function WorkspaceShell({ role }: { role: Role }) {
             {role === "student" ? "Learning workspace" : "Teaching workspace"}
           </span>
           <div className="flex items-center gap-3">
-            <span className="avatar" aria-label={session.data?.name}>
-              {session.data?.name.slice(0, 2).toUpperCase()}
-            </span>
+            <Link to={`/${role}/profile`} className="avatar overflow-hidden" aria-label="Profile settings">
+              {session.data?.photo_url ? <img src={session.data.photo_url} alt="" className="h-full w-full object-cover" /> : session.data?.name.slice(0, 2).toUpperCase()}
+            </Link>
             <Button
               variant="outline"
               disabled={busy}
@@ -83,10 +79,6 @@ export function WorkspaceShell({ role }: { role: Role }) {
               Sign out
             </Button>
           </div>
-        </div>
-        <div className="demo-banner">
-          <span className="demo-dot" />
-          Submit code for instructor review. Points are awarded by instructors; Run Java is deferred.
         </div>
         <main
           id="main-content"

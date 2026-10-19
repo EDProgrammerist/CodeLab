@@ -1,20 +1,16 @@
-import { Textarea } from '@/components/ui/textarea';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { EvaluationResult, SubmissionHistory } from './submission-history';
 import { sendEvaluation } from '@/services/assessment-service';
 import { authError } from '@/services/auth-service';
 import type { Activity } from '@/types/activity';
-import type { Evaluation } from '@/types/assessment';
 const JavaEditor = lazy(() => import('./java-editor').then(m => ({ default: m.JavaEditor })));
 export function AssessmentWorkspace({ activity }: { activity: Activity }) {
  const base = `/classrooms/${activity.classroom_id}/activities/${activity.id}`;
  const client = useQueryClient();
  const [code, setCode] = useState('public class Main {\n    public static void main(String[] args) {\n        // Write your solution here.\n    }\n}\n');
- const [plain, setPlain] = useState(false);
  const [busy, setBusy] = useState(false); const [error, setError] = useState('');
- const [result, setResult] = useState<Evaluation | null>(null);
+ const [submitted, setSubmitted] = useState(false);
  const request = useRef<{ fingerprint: string; key: string } | null>(null);
  const pending = useRef(false);
  async function send() {
@@ -24,24 +20,22 @@ export function AssessmentWorkspace({ activity }: { activity: Activity }) {
   const fingerprint = JSON.stringify(data);
   if (request.current?.fingerprint !== fingerprint) request.current = { fingerprint, key: crypto.randomUUID() };
   try {
-   const record = await sendEvaluation(`${base}/submissions`, data, request.current.key);
-   setResult(record); request.current = null;
+   await sendEvaluation(`${base}/submissions`, data, request.current.key);
+   setSubmitted(true); request.current = null;
    await client.invalidateQueries({ queryKey: ['domain'] });
   } catch (err) { setError(authError(err)); } finally { pending.current = false; setBusy(false); }
  }
  return <>
-  <section className="panel mt-6 space-y-4"><h2>Code workspace</h2>
-   <p>Single Main.java file, class Main, standard input and output. No packages or external libraries.</p>
-   <p className="muted">Your draft stays in this page only. Copy it before leaving or reloading.</p>
-   {!activity.execution_available && <p role="status" className="inline-note">Run Java is deferred. You can submit code now for instructor review; your instructor reviews it and awards points.</p>}
-   <label className="flex items-center gap-2"><input type="checkbox" checked={plain} onChange={e => setPlain(e.target.checked)} />Use plain text editor</label>
-   {plain ? <label className="block">Java source code<Textarea className="mt-2 h-[380px] font-mono [field-sizing:fixed]" rows={16} value={code} onChange={e => setCode(e.target.value)} /></label> : <Suspense fallback={<p role="status">Loading editor...</p>}><JavaEditor value={code} onChange={setCode} readOnly={false} /></Suspense>}
-   <p>You can submit updated code before the deadline. Each submission is saved for instructor review.</p>
+  <section className="panel space-y-4"><h2>Code workspace</h2>
+   <p className="muted text-sm">Your draft stays here until you leave or reload this page.</p>
+   <div className="overflow-hidden rounded-lg border border-input">
+    <div className="flex items-center justify-between border-b border-input bg-stone-50 px-4 py-3 text-sm"><span className="font-medium">Main.java</span><span className="muted">Java</span></div>
+    <Suspense fallback={<p className="p-6" role="status">Loading editor...</p>}><JavaEditor value={code} onChange={value => { setCode(value); setSubmitted(false); }} readOnly={busy} /></Suspense>
+   </div>
    {activity.submission_unavailable_reason && <p>{activity.submission_unavailable_reason}</p>}
-   <div className="flex flex-wrap gap-3"><Button variant="outline" disabled>Run Java (coming later)</Button><Button disabled={!activity.can_submit || busy} onClick={() => void send()}>{busy ? 'Submitting...' : 'Submit code'}</Button></div>
+   <div className="flex flex-wrap gap-3"><Button disabled={!activity.can_submit || busy} onClick={() => void send()}>{busy ? 'Submitting...' : 'Submit code'}</Button></div>
    {error && <p role="alert">{error} Retry unchanged code to reuse the same request safely.</p>}
-   {result && <EvaluationResult result={result} />}
+   {submitted && <p role="status">Code submitted for instructor review.</p>}
   </section>
-  <SubmissionHistory base={base} />
  </>;
 }

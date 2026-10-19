@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router';
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,9 @@ import { useDomainAction } from "@/hooks/use-domain-action";
 import { readDomain, writeDomain } from "@/services/classroom-service";
 import type { Classroom, Membership, PageData } from "@/types/classroom";
 export function ClassroomManagement({ classroom }: { classroom: Classroom }) {
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
+  const deletion = useDomainAction();
   const [page, setPage] = useState(1)
   const [defaultExpiry] = useState(() => new Date(Date.now() + 7 * 86400000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16));
   const [code, setCode] = useState("");
@@ -27,6 +31,19 @@ export function ClassroomManagement({ classroom }: { classroom: Classroom }) {
   const active = classroom.status === "active";
   return (
     <section className="space-y-6 my-6" aria-label="Classroom enrollment">
+      <div className="flex flex-wrap items-center gap-3">
+        {!deleting ? <Button variant="outline" onClick={() => setDeleting(true)}>Delete classroom</Button> : <div className="panel space-y-3" role="group" aria-label="Confirm classroom deletion">
+          <p>Delete {classroom.section_label}? This removes the classroom for you and your students and disables its invitation code. Submitted work is retained in storage.</p>
+          <div className="flex gap-3">
+            <Button disabled={deletion.busy} onClick={() => void deletion.run(async () => {
+              await writeDomain(path, 'delete');
+              navigate('/instructor/classrooms', { replace: true });
+            })}>{deletion.busy ? 'Deleting...' : 'Confirm delete'}</Button>
+            <Button variant="outline" disabled={deletion.busy} onClick={() => setDeleting(false)}>Cancel</Button>
+          </div>
+        </div>}
+        {deletion.error && <p role="alert">{deletion.error}</p>}
+      </div>
       <div className="panel space-y-4">
         <h2>Enrollment invitation</h2>
         {invitation.isError && (

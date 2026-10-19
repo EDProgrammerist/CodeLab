@@ -6,5 +6,7 @@ export type User = {
   email: string
   role: Role
   student_number: string | null
+  section: string | null
+  photo_url: string | null
   email_verified_at: string | null
 }

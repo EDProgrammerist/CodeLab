@@ -31,6 +31,13 @@ export function ClassroomForm({
       <h2>{classroom ? "Classroom settings" : "New classroom"}</h2>
       <div className="form-grid">
         <label className="field-label">
+          Year level
+          <select name="year_level" className="select" required defaultValue={classroom?.year_level ?? ''}>
+            <option value="" disabled>Select year level</option>
+            {['First', 'Second', 'Third', 'Fourth'].map(level => <option key={level} value={level}>{level} Year</option>)}
+          </select>
+        </label>
+        <label className="field-label">
           Section
           <Input
             name="section_label"
@@ -74,7 +81,7 @@ export function ClassroomForm({
         </label>
       </div>
       <p className="muted text-sm">
-        Create a classroom for your section, semester and academic year.
+        Create a classroom for your year level, section, semester and academic year.
       </p>
       {action.error && <p role="alert">{action.error}</p>}
       <Button disabled={action.busy}>

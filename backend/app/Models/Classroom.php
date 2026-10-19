@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Classroom extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $fillable = ['title', 'course_code', 'section_label', 'academic_year_start', 'academic_year_end', 'semester', 'term_end_date', 'timezone'];
+    protected $fillable = ['title', 'course_code', 'section_label', 'year_level', 'academic_year_start', 'academic_year_end', 'semester', 'term_end_date', 'timezone'];
 
     protected function casts(): array
     {

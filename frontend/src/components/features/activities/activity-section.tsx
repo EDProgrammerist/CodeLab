@@ -48,7 +48,7 @@ export function ActivitySection({ role }: { role: Role }) {
         All classrooms
       </Link>
       <PageHeading
-        eyebrow={`${c.course_code ? `${c.course_code} / ` : ""}${c.section_label} / ${c.academic_year_start}-${c.academic_year_end} / ${c.semester}`}
+        eyebrow={`${c.year_level ? `${c.year_level} Year / ` : ""}${c.course_code ? `${c.course_code} / ` : ""}${c.section_label} / ${c.academic_year_start}-${c.academic_year_end} / ${c.semester}`}
         title={c.title}
         description={`${c.status === "archived" ? "Archived classroom. " : ""}Deadlines use ${c.timezone}.`}
         action={
@@ -90,7 +90,7 @@ export function ActivitySection({ role }: { role: Role }) {
               setPage(1);
             }}
           >
-            <option value="">OC and LAB</option>
+            <option value="">All sessions</option>
             <option value="oc">OC</option>
             <option value="lab">LAB</option>
           </select>
@@ -151,6 +151,7 @@ export function ActivitySection({ role }: { role: Role }) {
                     / {a.max_points} points
                   </p>
                 </div>
+                {role === "instructor" && a.published_at && <Link className="text-link" to={`/instructor/classrooms/${c.id}/activities/${a.id}?view=submissions`}>Review answers<span className="sr-only"> for {a.title}</span></Link>}
                 <span className="text-sm">
                   {a.allocation_status === "not_assigned"
                     ? "Not assigned"

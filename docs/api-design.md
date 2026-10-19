@@ -3,6 +3,10 @@
 > **17 October 2026 update:** The current [functional requirements](functional-requirements.md#october-17-workflow-revision) supersede older no-score/attempt/Summer rules below. Manual points are stored in `submission_feedback.points_awarded`; `max_points` is required for new activities. Feedback accepts nullable `points_awarded` bounded by the activity maximum. Submission lists use IDs, not attempt numbers; reports show latest-submission points. Student numbers are required for new registration. Only First/Second semesters are accepted. Historical database fields and records are preserved.
 > **Scope revision - 14 October 2026:** [Current functional requirements](functional-requirements.md) supersede older grading/export references below. CodeLab stores code submissions and instructor feedback, with no new scores, grading calculations or CSV/Excel exports. Completed means code was received. Run Java is deferred independently of submission. School: Asticassia School of Technology; no Facebook page supplied. Phases 6 and 7 resumed on 15 October 2026; see development-roadmap.md for current acceptance status. Older grading architecture and evidence are retained as historical design, not current commitments.
 
+## October 19 profile and authoring contract
+
+The frontend uses one Publish action and Questions (stored in the existing `instructions` field). POST activity with `status=published` validates and publishes in one transaction, rolling back on failure. Existing drafts can still be published through PATCH. Profiles add nullable `section` and private `profile_photo_path` columns; UserResource exposes `section` and `photo_url`, never the storage path. Profile updates require CSRF for browser sessions and are limited to 30 per minute. Photos accept JPG/PNG/WebP up to 2 MB and 2048 by 2048 pixels; replacements remove the old file. Student number remains unique. Profile section is informational, not classroom membership.
+
 ## Current submission and progress contract
 
 `POST /api/v1/classrooms/{classroom}/activities/{activity}/submissions` accepts `language_id` and `source_code` with UUID `Idempotency-Key`. Returns 201 for a new stored submission and 200 for a replay. No runner, queue or grading is involved. Score/state/results input is prohibited. Admission uses the existing classroom-first lock and deadline/limit rules.
@@ -55,7 +59,8 @@ All paths below are relative to `/api/v1`.
 | Method/path | Authorized caller and contract |
 | --- | --- |
 | GET `/me` | Authenticated user; safe profile including role and verification status |
-| PATCH `/me` | Own name only and approved editable profile fields; role/student identity changes excluded |
+| POST `/profile` | Verified active account; multipart name, optional photo; students also send required unique student_number and optional section. Updates only the signed-in user. |
+| GET `/profile/photo` | Verified active account; streams own private photo, or 404. No public photo path. |
 | PUT `/me/password` | Own account; current password plus confirmed new password; revoke other sessions |
 | GET `/classrooms` | Owner's classrooms or student's active memberships, including archived classrooms |
 | POST `/classrooms` | Instructor; title, course_code, section_label, academic year, semester, term_end_date, timezone; owner inferred |
@@ -74,7 +79,7 @@ All paths below are relative to `/api/v1`.
 | Method/path | Contract |
 | --- | --- |
 | GET `/classrooms/{classroom}/activities` | Authorized owner/member; period/session/type/status filters; student visibility scope enforced independently of filter |
-| POST `/classrooms/{classroom}/activities` | Owner; create draft with fields in database design |
+| POST `/classrooms/{classroom}/activities` | Owner; status=published creates and publishes atomically, including allocations; omitted status retains legacy draft API support |
 | GET `/classrooms/{classroom}/activities/{activity}` | Owner or active member; role-specific serializers |
 | PATCH `/classrooms/{classroom}/activities/{activity}` | Owner; draft fields or published deadline/limit increases; status=published/archive triggers lifecycle validation |
 | DELETE `/classrooms/{classroom}/activities/{activity}` | Owner; unreferenced draft only |

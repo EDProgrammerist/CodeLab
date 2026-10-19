@@ -76,6 +76,19 @@ class ClassroomController extends Controller
         });
     }
 
+    public function destroy(Request $request, Classroom $classroom): Response
+    {
+        DB::transaction(function () use ($request, $classroom) {
+            $classroom = Classroom::whereKey($classroom->id)->lockForUpdate()->firstOrFail();
+            Gate::authorize('delete', $classroom);
+            DB::table('classroom_invitations')->where('classroom_id', $classroom->id)->update(['revoked_at' => now()]);
+            $this->workflow->audit($request, $classroom, 'classroom.deleted');
+            $classroom->delete();
+        });
+
+        return response()->noContent();
+    }
+
     public function invitation(Request $request, Classroom $classroom): JsonResponse
     {
         Gate::authorize('view', $classroom);

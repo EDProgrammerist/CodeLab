@@ -36,9 +36,9 @@ export function ActivityDetailSection() {
         title={a.title}
         description={`${a.language.display_name} / ${a.max_points} points`}
       />
-      <AssessmentWorkspace key={a.id} activity={a} />
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <section className="panel space-y-4">
-        <h2>Instructions</h2>
+        <h2>Questions</h2>
         <p className="whitespace-pre-wrap break-words">{a.instructions}</p>
         <p>
           Deadline:{" "}
@@ -55,27 +55,8 @@ export function ActivityDetailSection() {
         </p>
 
       </section>
-      <section className="panel space-y-5 mt-6">
-        <h2>Public examples</h2>
-        {a.public_examples?.map((t, i) => (
-          <div key={i} className="space-y-2">
-            <h3>Example {i + 1}</h3>
-            <div className="form-grid">
-              <div>
-                <p className="text-sm muted">Input</p>
-                <pre className="code-sample">{t.stdin || "(empty input)"}</pre>
-              </div>
-              <div>
-                <p className="text-sm muted">Expected output</p>
-                <pre className="code-sample">
-                  {t.expected_stdout || "(empty output)"}
-                </pre>
-              </div>
-            </div>
-            {t.explanation && <p className="break-words">{t.explanation}</p>}
-          </div>
-        ))}
-      </section>
+      <div className="min-w-0"><AssessmentWorkspace key={a.id} activity={a} /></div>
+      </div>
     </>
   );
 }

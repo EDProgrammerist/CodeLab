@@ -57,11 +57,15 @@ class ActivityController extends Controller
         return DB::transaction(function () use ($request, $classroom) {
             $classroom = $this->classrooms->lock($classroom->id);
             $data = $this->workflow->validate($request, $classroom);
-            abort_if(isset($data['status']), 422, 'Create a draft before publishing.');
+            abort_if(($data['status'] ?? null) === 'archived', 422, 'New work must be published or a draft.');
             $activity = $classroom->activities()->create($data);
             $activity->refresh();
             if (isset($data['tests'])) {
                 $this->workflow->replaceTests($activity, $data['tests']);
+            }
+            if (($data['status'] ?? null) === 'published') {
+                $this->publish($classroom, $activity);
+                $this->workflow->digest($activity);
             }
             $this->classrooms->audit($request, $classroom, 'activity.created', 'activity', $activity->id);
 
@@ -90,15 +94,7 @@ class ActivityController extends Controller
             }
             $publishing = ($data['status'] ?? null) === 'published' && ! $activity->published_at;
             if ($publishing) {
-                abort_unless((float) $activity->max_points > 0, 422, 'Set activity points before publishing.');
-                abort_unless($activity->deadline_at->gt(now()), 422, 'Publication requires a future deadline.');
-                $this->workflow->assertSuite($activity);
-                $activity->status = 'published';
-                $activity->published_at = now();
-                $activity->save();
-                foreach ($classroom->memberships()->where('status', 'active')->orderBy('id')->lockForUpdate()->get() as $member) {
-                    $this->classrooms->allocate($member, $activity);
-                }
+                $this->publish($classroom, $activity);
             }
             if (($data['status'] ?? null) === 'archived') {
                 $activity->status = 'archived';
@@ -112,6 +108,19 @@ class ActivityController extends Controller
 
             return new ActivityResource($activity);
         });
+    }
+
+    private function publish(Classroom $classroom, Activity $activity): void
+    {
+        abort_unless((float) $activity->max_points > 0, 422, 'Set activity points before publishing.');
+        abort_unless($activity->deadline_at->gt(now()), 422, 'Publication requires a future deadline.');
+        $this->workflow->assertSuite($activity);
+        $activity->status = 'published';
+        $activity->published_at = now();
+        $activity->save();
+        foreach ($classroom->memberships()->where('status', 'active')->orderBy('id')->lockForUpdate()->get() as $member) {
+            $this->classrooms->allocate($member, $activity);
+        }
     }
 
     public function destroy(Request $request, Classroom $classroom, string $activity): Response

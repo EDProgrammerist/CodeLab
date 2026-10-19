@@ -7,8 +7,8 @@ Current approved scope, 17 October 2026. This replaces the earlier automated-ass
 - Two roles: public student registration and controlled instructor provisioning; email login, verification, recovery and secure logout.
 - Each instructor owns private classrooms, one per course/section/term, with enrollment codes shared with their section.
 - Activities and assignments are categorized by academic year, semester, grading period and session. Preserve the approved calendar placeholders until the owner supplies the actual schedule.
-- Instructors author a title and instructions, set deadlines and maximum points (0.01 to 1000, up to two decimal places), publish and archive activities, review submitted code and provide comments/explanations.
-- Students write single-file Java in Monaco or the plain-text fallback and submit source for instructor review. Source is stored as text and never executed by React, PHP or the database.
+- Instructors author a title and questions, set deadlines and maximum points (0.01 to 1000, up to two decimal places), publish and archive activities, review submitted code and provide comments/explanations.
+- Students write single-file Java in CodeMirror or the plain-text fallback and submit source for instructor review. Source is stored as text and never executed by React, PHP or the database.
 - CodeLab tracks received submissions and completion. Instructors award points manually during review; students can read their points and feedback in CodeLab.
 - No automated grading or highest-score selection, grade totals, percentages, gradebook calculations, CSV exports or Excel exports.
 
@@ -18,7 +18,7 @@ A successful new submission returns immediately after storage with state `submit
 
 Admission requires a verified active student, active membership in the correct classroom, assigned published activity, active classroom, enabled activity language, an unexpired deadline. The server clock and classroom transaction lock determine admission. A request at the exact deadline is accepted; later requests are rejected. Replayed successful requests may return their existing record after closure, but cannot create another submission.
 
-Published instructions/categories/language remain fixed. Deadlines and limits may only increase. Examples lock on the first code submission; a replacement activity is needed for later corrections. No public/hidden test combination is required to publish; examples are optional and never graded.
+Published questions/categories/language remain fixed. Deadlines and limits may only increase. Examples lock on the first code submission; a replacement activity is needed for later corrections. No public/hidden test combination is required to publish; examples are optional and never graded.
 
 ## Review and progress
 
@@ -54,4 +54,6 @@ Instructor classroom screens expose enrollment codes and rosters directly, witho
 
 Classroom creation asks only for Section, Semester, and academic-year start/end. For this simplified form the API uses the section as title, no course code, Asia/Manila timezone, and December 31 of the ending academic year as the internal date boundary (not an asserted school semester end). Existing classrooms retain their saved values.
 
-Activity/Assignment authoring uses Save draft followed by a Publish section and Publish button. Lifecycle deletion/archive controls and submission history are not shown in the authoring screen. Instructors open an activity from Submission tracking to review code, save feedback and award points in the separate review view.
+Activity/Assignment authoring uses one Publish action to save and publish atomically. Questions use the existing instructions storage field for compatibility. Students see Questions alongside CodeMirror, without separate Instructions or Public examples sections. Instructors use Review answers in the classroom to review code, save feedback and award points; the Submissions sidebar link is removed. The session filter uses All sessions, OC and LAB.
+
+Both roles can edit their own name and upload a JPG, PNG or WebP profile picture (2 MB maximum; 2048 by 2048 pixels maximum). Students can also edit their unique required student number and optional profile section. Profile section never enrolls or moves a student. Photos are stored privately and served to their authenticated owner; role, email and verification changes are not allowed through profile settings.

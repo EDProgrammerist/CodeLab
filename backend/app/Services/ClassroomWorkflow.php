@@ -33,6 +33,7 @@ class ClassroomWorkflow
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:150'], 'course_code' => ['sometimes', 'string', 'max:50'], 'section_label' => [$required, 'string', 'max:50'],
             'academic_year_start' => [$required, 'integer', 'between:2000,2100'], 'academic_year_end' => [$required, 'integer', 'between:2001,2101'],
+            'year_level' => ['sometimes', 'in:First,Second,Third,Fourth'],
             'semester' => [$required, 'in:First,Second'], 'term_end_date' => ['sometimes', 'date_format:Y-m-d'],
             'timezone' => ['sometimes', 'timezone'], 'status' => ['sometimes', 'in:archived'],
             'instructor_id' => ['prohibited'], 'id' => ['prohibited'],

@@ -122,6 +122,8 @@ const ROUTES = [
   "/instructor/classrooms/1/activities/new",
   "/instructor/gradebook",
   "/student/progress",
+  "/student/profile",
+  "/instructor/profile",
 ];
 for (const width of [360, 768, 1366]) {
   test(`screens are accessible and fit at ${width}px`, async ({ page }) => {
@@ -132,7 +134,7 @@ for (const width of [360, 768, 1366]) {
         page.locator("h1:visible, h2:visible").first(),
       ).toBeVisible();
       if (route === "/student/classrooms/1/activities/1")
-        await expect(page.locator(".monaco-editor").first()).toBeVisible();
+        await expect(page.locator(".cm-editor").first()).toBeVisible();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -214,7 +216,7 @@ test("instructor draft controls and live gradebook filters", async ({ page }) =>
   await expect(page.getByLabel("Work type")).toHaveValue("assignment");
   await page.goto("/instructor/classrooms/1/activities/1");
   await expect(
-    page.getByRole("heading", { name: "Published brief" }),
+    page.getByRole("heading", { name: "Assignment details" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Add example" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Student submissions and feedback" })).toHaveCount(0);
@@ -226,22 +228,18 @@ test("instructor draft controls and live gradebook filters", async ({ page }) =>
   await expect(page.getByText('No published activities match these filters.')).toBeVisible();
 });
 
-test('real activity editor stays usable with execution disabled and shows saved feedback', async ({ page }) => {
+test('student editor shows only code and submission controls', async ({ page }) => {
  await page.setViewportSize({ width: 390, height: 844 });
  await page.goto('/student/classrooms/1/activities/1');
- await expect(page.getByRole('heading', { name: 'Code workspace' })).toBeVisible();
- await page.getByLabel('Use plain text editor').check();
- await page.getByRole('textbox', { name: 'Java source code' }).fill('public class Main { /* my draft */ }');
- await expect(page.getByRole('button', { name: 'Run Java (coming later)', exact: true })).toBeDisabled();
- await expect(page.getByRole('button', { name: 'Submit code' })).toBeEnabled();
- await page.getByRole('button', { name: 'View submission 1' }).click();
- await expect(page.getByText('Explain your loop boundary.')).toBeVisible();
- await expect(page.getByText('Points: 80.00 / 100.00')).toBeVisible();
- await expect(page.getByRole('button', { name: 'Save feedback' })).toHaveCount(0);
- expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
- const audit = await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
- expect(audit.violations).toEqual([]);
- await page.screenshot({ path: 'test-results/screens/assessment-mobile.png', fullPage: true });
+ await expect(page.locator('.cm-editor')).toBeVisible();
+ await page.locator('.cm-content').fill('public class Main { /* my draft */ }');
+ await expect(page.locator('.cm-content')).toContainText('my draft');
+ await expect(page.getByLabel('Use plain text editor')).toHaveCount(0);
+ await expect(page.getByRole('button', { name: /Run Java/ })).toHaveCount(0);
+ await expect(page.getByRole('heading', { name: 'Submission history' })).toHaveCount(0);
+ await expect(page.getByRole('button', { name: /View submission/ })).toHaveCount(0);
+ await expect(page.locator('.demo-banner')).toHaveCount(0);
+ await expect(page.getByRole('button', { name: 'Submit code', exact: true })).toBeEnabled();
 });
 
 test('instructor saves feedback through API and views the report without exports', async ({ page }) => {
@@ -307,23 +305,25 @@ test('section classroom exposes enrollment and distinct work types without sched
 });
 
 
-test('saved draft publishes through the simplified Publish section', async ({ page }) => {
+test('existing draft saves without a Publish button', async ({ page }) => {
  let published = false;
  await page.route('**/sanctum/csrf-cookie', route => route.fulfill({ status: 204 }));
  await page.route('**/api/v1/classrooms/1/activities/1', route => {
   if (route.request().method() === 'PATCH') {
-   expect(route.request().postDataJSON()).toEqual({ status: 'published' });
+   expect(route.request().postDataJSON()).toMatchObject({ status: 'published', instructions: ACTIVITY.instructions });
    published = true;
   }
   return route.fulfill({ json: { data: { ...ACTIVITY, status: published ? 'published' : 'draft', published_at: published ? ACTIVITY.published_at : null } } });
  });
  await page.goto('/instructor/classrooms/1/activities/1');
- await expect(page.getByRole('heading', { name: 'Publish', exact: true })).toBeVisible();
+ await expect(page.getByRole('button', { name: 'Save draft', exact: true })).toHaveCount(0);
+ await expect(page.getByRole('textbox', { name: 'Questions', exact: true })).toBeVisible();
  await expect(page.getByRole('heading', { name: 'Student submissions and feedback' })).toHaveCount(0);
  await expect(page.getByRole('button', { name: 'Delete draft' })).toHaveCount(0);
- await page.getByRole('button', { name: 'Publish', exact: true }).click();
- await expect(page.getByRole('heading', { name: 'Published brief' })).toBeVisible();
- expect(published).toBe(true);
+ await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
+ await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+ await expect(page.getByRole('heading', { name: 'Assignment details' })).toBeVisible();
+ await expect.poll(() => published).toBe(true);
  await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
 });
 
@@ -336,4 +336,75 @@ test('submission tracking links to review instead of authoring', async ({ page }
  await expect(page.getByRole('textbox', { name: 'Instructions', exact: true })).toHaveCount(0);
  await page.getByRole('button', { name: 'View submission 1' }).click();
  await expect(page.getByRole('spinbutton', { name: 'Points awarded' })).toBeVisible();
+});
+
+for (const role of ['student', 'instructor']) {
+ test(`${role} can save profile fields and upload a picture`, async ({ page }) => {
+  await page.route('**/sanctum/csrf-cookie', route => route.fulfill({ status: 204 }));
+  await page.route('**/api/v1/profile', route => {
+   const body = route.request().postData() ?? '';
+   expect(body).toContain('Updated Name');
+   expect(body).toContain('avatar.png');
+   if (role === 'student') { expect(body).toContain('S-123'); expect(body).toContain('BSIT-2A'); }
+   else expect(body).not.toContain('student_number');
+   return route.fulfill({ json: { data: { id: '1', name: 'Updated Name', role, student_number: role === 'student' ? 'S-123' : null, section: role === 'student' ? 'BSIT-2A' : null, photo_url: null, email_verified_at: '2026-10-13T00:00:00Z' } } });
+  });
+  await page.goto(`/${role}/profile`);
+  await page.getByLabel('Name', { exact: true }).fill('Updated Name');
+  if (role === 'student') {
+   await page.getByLabel('Student number / ID').fill('S-123');
+   await page.getByLabel('Section', { exact: true }).fill('BSIT-2A');
+  } else await expect(page.getByLabel('Student number / ID')).toHaveCount(0);
+  await page.getByLabel('Profile picture').setInputFiles({ name: 'avatar.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64') });
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  await expect(page.getByText('Profile saved.', { exact: true })).toBeVisible();
+ });
+}
+
+test('questions appear with CodeMirror and classroom review remains available', async ({ page }) => {
+ await page.goto('/student/classrooms/1/activities/1');
+ await expect(page.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible();
+ await expect(page.getByText(ACTIVITY.instructions, { exact: true })).toBeVisible();
+ await expect(page.locator('.cm-editor')).toBeVisible();
+ await expect(page.getByRole('heading', { name: 'Instructions', exact: true })).toHaveCount(0);
+ await expect(page.getByRole('heading', { name: 'Public examples', exact: true })).toHaveCount(0);
+ await page.goto('/instructor/classrooms/1');
+ await expect(page.getByRole('navigation', { name: 'Workspace navigation' }).getByText('Submissions')).toHaveCount(0);
+ await page.getByRole('link', { name: `Review answers for ${ACTIVITY.title}` }).click();
+ await expect(page).toHaveURL(/view=submissions/);
+ await page.getByRole('button', { name: 'View submission 1' }).click();
+ await expect(page.getByRole('spinbutton', { name: 'Points awarded' })).toBeVisible();
+});
+
+test('instructor creation has year levels and Publish only for new work', async ({ page }) => {
+ await page.goto('/instructor/classrooms');
+ await page.getByRole('button', { name: 'Create classroom', exact: true }).click();
+ await expect(page.getByLabel('Year level')).toBeVisible();
+ await expect(page.getByLabel('Year level').locator('option')).toHaveText(['Select year level', 'First Year', 'Second Year', 'Third Year', 'Fourth Year']);
+ await page.getByLabel('Year level').selectOption('Third');
+ await page.goto('/instructor/classrooms/1/activities/new');
+ await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
+ await expect(page.getByLabel('Language', { exact: true })).toHaveCount(0);
+ await expect(page.locator('.demo-banner')).toHaveCount(0);
+ await page.goto('/instructor/classrooms/1/activities/1');
+ await expect(page.getByRole('button', { name: 'Publish', exact: true })).toHaveCount(0);
+ await expect(page.getByRole('button', { name: 'Save changes', exact: true })).toBeVisible();
+});
+
+test('classroom deletion requires confirmation and returns to classrooms', async ({ page }) => {
+ let deleted = false;
+ await page.route('**/sanctum/csrf-cookie', route => route.fulfill({ status: 204 }));
+ await page.route('**/api/v1/classrooms/1', route => {
+  if (route.request().method() === 'DELETE') { deleted = true; return route.fulfill({ status: 204 }); }
+  return route.fulfill({ json: { data: CLASSROOM } });
+ });
+ await page.goto('/instructor/classrooms/1');
+ await page.getByRole('button', { name: 'Delete classroom', exact: true }).click();
+ expect(deleted).toBe(false);
+ await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+ expect(deleted).toBe(false);
+ await page.getByRole('button', { name: 'Delete classroom', exact: true }).click();
+ await page.getByRole('button', { name: 'Confirm delete', exact: true }).click();
+ await expect(page).toHaveURL('/instructor/classrooms');
+ expect(deleted).toBe(true);
 });

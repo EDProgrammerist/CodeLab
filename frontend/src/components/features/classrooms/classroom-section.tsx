@@ -109,6 +109,7 @@ export function ClassroomSection({ role }: { role: Role }) {
                       {c.title}
                     </Link>
                   </h2>
+                  {c.year_level && <p className="text-sm mb-2">{c.year_level} Year</p>}
                   <p className="muted">
                     {c.academic_year_start}-{c.academic_year_end} / {c.semester}{" "}
                     semester

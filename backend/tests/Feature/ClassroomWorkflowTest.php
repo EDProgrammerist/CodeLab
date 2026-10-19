@@ -19,6 +19,39 @@ class ClassroomWorkflowTest extends TestCase
         return ['title' => 'Programming 1', 'course_code' => 'CC101', 'section_label' => '1-A', 'academic_year_start' => 2026, 'academic_year_end' => 2027, 'semester' => 'First', 'term_end_date' => '2027-03-31', 'timezone' => 'Asia/Manila', 'schedules' => [['class_session' => 'oc', 'day_of_week' => 1, 'starts_at' => '09:00', 'ends_at' => '10:00'], ['class_session' => 'lab', 'day_of_week' => 2, 'starts_at' => '13:00', 'ends_at' => '16:00']]];
     }
 
+    public function test_year_levels_are_saved_and_validated(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'instructor']));
+        foreach (['First', 'Second', 'Third', 'Fourth'] as $level) {
+            $this->postJson('/api/v1/classrooms', [...$this->payload(), 'year_level' => $level])->assertCreated()->assertJsonPath('data.year_level', $level);
+        }
+        $this->postJson('/api/v1/classrooms', [...$this->payload(), 'year_level' => 'Fifth'])->assertUnprocessable()->assertJsonValidationErrors('year_level');
+    }
+
+    public function test_only_owner_can_delete_classroom_and_all_access_is_removed(): void
+    {
+        $class = Classroom::factory()->create();
+        $activity = Activity::factory()->create(['classroom_id' => $class->id]);
+        $student = User::factory()->create();
+        $class->memberships()->create(['student_id' => $student->id, 'status' => 'active', 'joined_at' => now()]);
+        $base = '/api/v1/classrooms/'.$class->id;
+        $this->deleteJson($base)->assertUnauthorized();
+        $this->actingAs($student)->deleteJson($base)->assertNotFound();
+        $this->actingAs(User::factory()->create(['role' => 'instructor']))->deleteJson($base)->assertNotFound();
+        $this->actingAs($class->instructor);
+        $code = $this->putJson($base.'/invitation', ['expires_at' => now()->addHour()->toISOString()])->assertOk()->json('data.invitation_code');
+        $this->deleteJson($base)->assertNoContent();
+        $this->assertSoftDeleted('classrooms', ['id' => $class->id]);
+        $this->assertDatabaseHas('activities', ['id' => $activity->id]);
+        $this->assertNotNull(DB::table('classroom_invitations')->where('classroom_id', $class->id)->value('revoked_at'));
+        $this->getJson('/api/v1/classrooms')->assertJsonCount(0, 'data');
+        $this->getJson($base)->assertNotFound();
+        $this->getJson($base.'/activities/'.$activity->id)->assertNotFound();
+        $this->actingAs($student)->getJson('/api/v1/classrooms')->assertJsonCount(0, 'data');
+        $this->postJson('/api/v1/classroom-joins', ['invitation_code' => $code])->assertNotFound();
+        $this->postJson($base.'/activities/'.$activity->id.'/submissions', [])->assertNotFound();
+    }
+
     public function test_section_semester_and_years_are_sufficient_to_create_a_classroom(): void
     {
         $instructor = User::factory()->create(['role' => 'instructor']);
@@ -144,6 +177,7 @@ class ClassroomWorkflowTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'instructor']))
             ->withHeader('Origin', 'http://127.0.0.1:5173')->withHeader('Sec-Fetch-Site', 'same-origin')
             ->postJson('/api/v1/classrooms', $this->payload())->assertStatus(419);
+        $this->postJson('/api/v1/profile', ['name' => 'CSRF change'])->assertStatus(419);
         $this->assertDatabaseCount('classrooms', 0);
     }
 }

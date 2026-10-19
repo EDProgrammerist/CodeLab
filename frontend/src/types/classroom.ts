@@ -9,6 +9,7 @@ export type Classroom = {
   title: string;
   course_code: string;
   section_label: string;
+  year_level: "First" | "Second" | "Third" | "Fourth" | null;
   academic_year_start: number;
   academic_year_end: number;
   semester: "First" | "Second";

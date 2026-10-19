@@ -22,7 +22,6 @@ function ActivityForm({
 }) {
   const navigate = useNavigate();
   const action = useDomainAction();
-  const [dirty, setDirty] = useState(false);
   const [searchParams] = useSearchParams();
   const [workType, setWorkType] = useState(activity?.activity_type ?? (searchParams.get('type') === 'assignment' ? 'assignment' : 'activity'));
   const workLabel = workType === 'assignment' ? 'Assignment' : 'Activity';
@@ -43,7 +42,6 @@ function ActivityForm({
     <>
       <form
         className="space-y-6"
-        onChange={() => setDirty(true)}
         onSubmit={(e) => {
           e.preventDefault();
           const fields = Object.fromEntries(new FormData(e.currentTarget));
@@ -51,6 +49,7 @@ function ActivityForm({
             async () => {
               const payload = {
                 ...fields,
+                ...(!published && { status: "published" }),
                 deadline_at: new Date(String(fields.deadline_at)).toISOString(),
               };
               const response = await writeDomain<{ data: Activity }>(
@@ -58,7 +57,6 @@ function ActivityForm({
                 activity ? "patch" : "post",
                 payload,
               );
-              setDirty(false);
               if (!activity)
                 navigate(
                   `/instructor/classrooms/${classroom.id}/activities/${response.data.id}`,
@@ -66,13 +64,13 @@ function ActivityForm({
                 );
             },
             published
-              ? "Published settings saved."
-              : `${workLabel} draft saved. Review it before publishing.`,
+              ? "Changes saved."
+              : `${workLabel} published.`,
           );
         }}
       >
         <section className="panel space-y-5">
-          <h2>{published ? "Published brief" : `${workLabel} details`}</h2>
+          <h2>{`${workLabel} details`}</h2>
           <fieldset disabled={published || closed} className="space-y-5">
             <label className="field-label">
               Title
@@ -84,7 +82,7 @@ function ActivityForm({
               />
             </label>
             <label className="field-label">
-              Instructions
+              Questions
               <Textarea
                 name="instructions"
                 required
@@ -130,25 +128,12 @@ function ActivityForm({
                   <option value="assignment">Assignment</option>
                 </select>
               </label>
-              <label className="field-label">
-                Language
-                <select
-                  name="language_id"
-                  className="select"
-                  defaultValue={activity?.language_id ?? languages[0]?.id}
-                >
-                  {languages.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.display_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <input type="hidden" name="language_id" value={activity?.language_id ?? languages[0]?.id ?? ""} />
 
             </div>
           </fieldset>
           <p className="muted text-sm">
-            Published instructions, categories and language are fixed.
+            Questions and categories are fixed once shared with students.
           </p>
           <fieldset disabled={closed} className="form-grid">
             <label className="field-label">
@@ -181,37 +166,15 @@ function ActivityForm({
           </p>
         </section>
         {!closed && (
-          <Button disabled={action.busy}>
+          <Button disabled={action.busy || (!activity && !languages.length)}>
             {action.busy
               ? "Saving..."
-              : published
-                ? "Save permitted changes"
-                : "Save draft"}
+              : activity
+                ? "Save changes"
+                : "Publish"}
           </Button>
         )}
       </form>
-      {activity && !closed && !published && (
-        <section className="panel space-y-4 mt-6">
-          <h2>Publish</h2>
-          <p className="muted">
-            {dirty
-              ? "Save your changes before publishing."
-              : "Publishing makes this work visible to enrolled students."}
-          </p>
-          {!published && (
-            <Button
-              disabled={dirty || action.busy}
-              onClick={() =>
-                void action.run(async () => {
-                  await writeDomain(endpoint, "patch", { status: "published" });
-                }, `${workLabel} published.`)
-              }
-            >
-              Publish
-            </Button>
-          )}
-        </section>
-      )}
       {action.error && (
         <p className="mt-4" role="alert">
           {action.error}
@@ -289,7 +252,7 @@ export function AuthoringSection() {
         title={
           activity.data ? activity.data.data.title : (searchParams.get("type") === "assignment" ? "Create assignment" : "Create activity")
         }
-        description={searchParams.get("view") === "submissions" ? "Review submitted code, provide feedback and award points." : "Set a title, instructions and points, then publish to this section."}
+        description={searchParams.get("view") === "submissions" ? "Review submitted code, provide feedback and award points." : activityId ? "View the questions and update permitted settings." : "Set a title, questions and points, then publish to this section."}
       />
       {searchParams.get("view") === "submissions" && activityId ? <SubmissionHistory key={activityId} base={`/classrooms/${classroomId}/activities/${activityId}`} instructor /> : <ActivityForm
         key={`${classroomId}-${activityId}-${activity.data?.data.status}`}

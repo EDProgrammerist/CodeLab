@@ -105,6 +105,7 @@ test("real classroom, invitation, assignment and mobile enrollment", async ({
     .getByRole("button", { name: "Create classroom", exact: true })
     .click();
   await page.getByLabel("Section", { exact: true }).fill(`Section ${stamp}`);
+  await page.getByLabel("Year level").selectOption("First");
   const year = new Date().getFullYear();
   await page.getByLabel("Academic year start").fill(String(year));
   await page.getByLabel("Academic year end").fill(String(year + 1));
@@ -126,23 +127,22 @@ test("real classroom, invitation, assignment and mobile enrollment", async ({
   await page.getByRole("link", { name: "Create activity" }).click();
   await page.getByLabel("Title", { exact: true }).fill("Add two integers");
   await page
-    .getByRole("textbox", { name: "Instructions", exact: true })
+    .getByRole("textbox", { name: "Questions", exact: true })
     .fill("Read two integers and print their sum.");
   await page.getByLabel("Work type").selectOption("assignment");
   await page
     .getByLabel("Deadline (your device time)")
     .fill(new Date(Date.now() + 172800000).toISOString().slice(0, 16));
-  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
   await expect(page).toHaveURL(
     new RegExp(`/classrooms/${classroomId}/activities/[0-9]+$`),
   );
   await page.reload();
   await expect(
-    page.getByRole("textbox", { name: "Instructions", exact: true }),
+    page.getByRole("textbox", { name: "Questions", exact: true }),
   ).toHaveValue("Read two integers and print their sum.");
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Published brief" }),
+    page.getByRole("heading", { name: "Assignment details" }),
   ).toBeVisible();
   const activityId = page.url().split("/").at(-1)!;
   await page.setViewportSize({ width: 390, height: 844 });
@@ -241,22 +241,19 @@ test("real classroom, invitation, assignment and mobile enrollment", async ({
   await expect(
     student.getByRole("heading", { name: "Add two integers", exact: true }),
   ).toBeVisible();
-  await student.getByLabel('Use plain text editor').check();
-  await student.getByRole('textbox', { name: 'Java source code' }).fill('public class Main {}');
-  await expect(student.getByText('No code submissions yet.')).toBeVisible();
+  await student.locator('.cm-content').fill('public class Main { public static void main(String[] args) {} }');
+  await expect(student.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible();
   await student.getByRole('button', { name: 'Submit code', exact: true }).click();
   await expect(student.getByText('Code submitted for instructor review.', { exact: true })).toBeVisible();
   await student.reload();
-  await student.getByRole('button', { name: 'View submission 1' }).click();
-  await expect(student.getByText('Code submitted for instructor review.', { exact: true })).toBeVisible();
-  await page.goto(`/instructor/classrooms/${classroomId}/activities/${activityId}`);
-  await page.getByRole('button', { name: 'View submission 1' }).click();
+  await expect(student.getByRole('heading', { name: 'Submission history' })).toHaveCount(0);
+  await page.goto(`/instructor/classrooms/${classroomId}`);
+  await page.getByRole('link', { name: 'Review answers for Add two integers' }).click();
+  await page.getByRole('button', { name: /^View submission / }).click();
   await page.getByLabel('Comments and explanation').fill('Explain your input parsing.');
+  await page.getByLabel('Points awarded').fill('85');
   await page.getByRole('button', { name: 'Save feedback' }).click();
   await expect(page.getByText('Feedback saved.', { exact: true })).toBeVisible();
-  await student.reload();
-  await student.getByRole('button', { name: 'View submission 1' }).click();
-  await expect(student.getByText('Explain your input parsing.', { exact: true })).toBeVisible();
   await student.goto('/student/progress');
   await student.getByRole('combobox', { name: 'Classroom', exact: true }).selectOption(classroomId);
   await expect(student.getByText('1 completed / 0 pending / 0 missed')).toBeVisible();
@@ -265,5 +262,17 @@ test("real classroom, invitation, assignment and mobile enrollment", async ({
   await page.getByRole('combobox', { name: 'Classroom', exact: true }).selectOption(classroomId);
   await expect(page.getByText('1 completed / 0 pending / 0 missed')).toBeVisible();
   await expect(page.getByRole('button', { name: /Download CSV|Download Excel/ })).toHaveCount(0);
+  for (const [profilePage, role] of [[page, 'instructor'], [student, 'student']] as const) {
+    await profilePage.goto(`/${role}/profile`);
+    await profilePage.getByLabel('Name', { exact: true }).fill(`Updated ${role}`);
+    if (role === 'student') await profilePage.getByLabel('Section', { exact: true }).fill('BSIT-2A');
+    await profilePage.getByLabel('Profile picture').setInputFiles({ name: 'avatar.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64') });
+    await profilePage.getByRole('button', { name: 'Save profile' }).click();
+    await expect(profilePage.getByText('Profile saved.', { exact: true })).toBeVisible();
+    await profilePage.reload();
+    await expect(profilePage.getByLabel('Name', { exact: true })).toHaveValue(`Updated ${role}`);
+    await expect(profilePage.getByRole('img', { name: 'Your profile', exact: true })).toBeVisible();
+    await expect.poll(() => profilePage.getByRole('img', { name: 'Your profile', exact: true }).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  }
   await phone.close();
 });

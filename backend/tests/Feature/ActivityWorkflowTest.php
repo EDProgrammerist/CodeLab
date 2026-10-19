@@ -18,6 +18,22 @@ class ActivityWorkflowTest extends TestCase
         return ['title' => 'Sum', 'instructions' => 'Read and add.', 'grading_period' => 'prelim', 'class_session' => 'lab', 'activity_type' => 'assignment', 'language_id' => (string) Language::firstOrFail()->id, 'max_points' => 100, 'deadline_at' => '2026-11-01T12:00:00+08:00', 'tests' => [['position' => 1, 'visibility' => 'public', 'stdin' => " 2 3\n", 'expected_stdout' => "5\n", 'explanation' => 'Example'], ['position' => 2, 'visibility' => 'hidden', 'stdin' => 'PRIVATE INPUT', 'expected_stdout' => 'PRIVATE OUTPUT', 'explanation' => 'SECRET EXPLANATION']]];
     }
 
+    public function test_create_and_publish_is_atomic_and_allocates_students(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 13));
+        $class = Classroom::factory()->create();
+        $student = User::factory()->create();
+        $member = $class->memberships()->create(['student_id' => $student->id, 'status' => 'active', 'joined_at' => now()]);
+        $base = '/api/v1/classrooms/'.$class->id.'/activities';
+        $this->actingAs($class->instructor);
+        $this->postJson($base, [...$this->payload(), 'status' => 'published', 'deadline_at' => '2026-10-12T00:00:00Z'])->assertUnprocessable();
+        $this->assertDatabaseCount('activities', 0);
+        $id = $this->postJson($base, [...$this->payload(), 'status' => 'published', 'tests' => []])->assertCreated()->assertJsonPath('data.status', 'published')->json('data.id');
+        $this->assertDatabaseHas('activity_allocations', ['activity_id' => $id, 'membership_id' => $member->id, 'status' => 'assigned']);
+        $this->actingAs($student)->getJson($base.'/'.$id)->assertOk()->assertJsonPath('data.instructions', 'Read and add.');
+        $this->postJson($base, [...$this->payload(), 'status' => 'published'])->assertNotFound();
+    }
+
     public function test_publication_allocations_hidden_serialization_and_whitespace(): void
     {
         $this->travelTo(now()->setDate(2026, 10, 13));

@@ -1,3 +1,5 @@
+import StudentProfile from '@/pages/student/profile/index';
+import InstructorProfile from '@/pages/instructor/profile/index';
 import '@fontsource-variable/inter';
 import PublicLayout from '@/pages/guest/layout';
 import LoginPage from '@/pages/guest/login/index';
@@ -65,6 +67,7 @@ createRoot(document.getElementById("root")!).render(
               element={<ActivityDetailPage />}
             />
             <Route path="activities/:activityId" element={<EditorPage />} />
+            <Route path="profile" element={<StudentProfile />} />
             <Route path="progress" element={<ProgressPage />} />
           </Route>
           <Route path="instructor" element={<InstructorLayout />}>
@@ -84,6 +87,7 @@ createRoot(document.getElementById("root")!).render(
               element={<AuthoringPage />}
             />
             <Route path="activities/new" element={<AuthoringPage />} />
+            <Route path="profile" element={<InstructorProfile />} />
             <Route path="gradebook" element={<GradebookPage />} />
           </Route>
         </Routes>
